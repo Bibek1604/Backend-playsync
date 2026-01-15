@@ -91,7 +91,7 @@ export class AuthService {
   }
 
   static async login(dto: LoginDTO): Promise<AuthResponseDTO> {
-    const user = await userRepository.findByEmail(dto.email);
+    const user = await userRepository.findByEmailWithPassword(dto.email);
     if (!user || !(await user.comparePassword(dto.password))) {
       throw new AppError("Invalid email or password", 401);
     }

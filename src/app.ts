@@ -11,7 +11,16 @@ import userRoutes from "./modules/users/users.routes";
 import { logger } from "./utils/logger";
 const app = express();
 
-app.use(cors());
+// CORS configuration
+const corsOptions: cors.CorsOptions = {
+  origin: process.env.CORS_ORIGIN || "*", // Allow all origins or specify allowed origins
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  credentials: true, // Allow cookies and authorization headers
+  optionsSuccessStatus: 200, // For legacy browser support
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -11,15 +11,18 @@ import userRoutes from "./modules/users/users.routes";
 import { logger } from "./utils/logger";
 const app = express();
 
-// CORS configuration
+// CORS configuration - Allow all origins for development
 const corsOptions: cors.CorsOptions = {
-  origin: process.env.CORS_ORIGIN || "*", // Allow all origins or specify allowed origins
+  origin: true, // Reflects the request origin, allowing all origins with credentials
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
   credentials: true, // Allow cookies and authorization headers
   optionsSuccessStatus: 200, // For legacy browser support
+  preflightContinue: false,
 };
 
+// Handle preflight requests
+app.options("*", cors(corsOptions));
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

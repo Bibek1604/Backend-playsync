@@ -5,8 +5,10 @@ import jwt from "jsonwebtoken";
 export const initSocket = (server: http.Server) => {
   const io = new Server(server, {
     cors: {
-      origin: "*"
-    }
+      origin: true, // Reflects the request origin, allowing all origins with credentials
+      methods: ["GET", "POST"],
+      credentials: true,
+    },
   });
 
   io.use((socket, next) => {

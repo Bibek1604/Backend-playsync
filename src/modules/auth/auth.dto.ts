@@ -2,11 +2,13 @@ export interface RegisterUserDTO{
     fullName: string;
     email: string;
     password: string;
+    confirmPassword: string;
 }
 export interface RegisterAdminDTO{
     fullName: string;
     email: string;
     password: string;
+    confirmPassword: string;
     role: "admin";
     adminCode: string;
 }

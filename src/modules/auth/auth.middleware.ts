@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { AppError } from "../../utils/appError";
+import AppError from "../../share/utils/AppError";
 
 export const auth = (req: any, _res: any, next: any) => {
   const token = req.headers.authorization?.split(" ")[1];

@@ -1,7 +1,0 @@
-///check logs 
-docker-compose logs api
-docker-compose logs mongo
-docker-compose logs redis
-
-//run docker
-docker-compose up  --build

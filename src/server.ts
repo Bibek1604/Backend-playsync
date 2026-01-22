@@ -1,9 +1,8 @@
 import dotenv from "dotenv";
 import http from "http";
 import app from "./app";
-import connectDB from "./config/db";
-import { initSocket } from "./websocket/socket.server";
-import { logger } from "./utils/logger";
+import connectDB from "./share/config/db";
+import logger from "./share/utils/logger";
 
 dotenv.config();
 
@@ -14,8 +13,6 @@ const PORT = process.env.PORT || 5000;
     await connectDB();
 
     const server = http.createServer(app);
-
-    initSocket(server);
 
     server.listen(PORT, () => {
       logger.info(`Server running at http://localhost:${PORT}/swagger`);

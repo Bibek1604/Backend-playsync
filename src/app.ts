@@ -6,9 +6,8 @@ import path from "path";
 
 
 import authRoutes from "./modules/auth/auth.routes";
-import userRoutes from "./modules/users/users.routes";
 
-import { logger } from "./utils/logger";
+import logger from "./share/utils/logger";
 const app = express();
 
 // CORS configuration - Allow all origins for development
@@ -37,7 +36,7 @@ const swaggerOptions: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: "http://localhost:5000"
+        url: "http://localhost:5000/api/v1"
       }
     ],
     components: {
@@ -56,6 +55,8 @@ const swaggerOptions: swaggerJsdoc.Options = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
+const API_BASE = '/api/v1';
+
 app.use(
   "/swagger",
   swaggerUi.serve,
@@ -63,8 +64,7 @@ app.use(
 );
 
 
-app.use("/auth", authRoutes);
-app.use("/users", userRoutes);
+app.use(`${API_BASE}/auth`, authRoutes);
 
 app.get("/", (_req, res) => {
   res.send(

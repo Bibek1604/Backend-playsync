@@ -2,23 +2,27 @@ import { Request ,Response , NextFunction } from "express";
 import { AuthService } from "./auth.service";
 import { RegisterAdminDTO,RegisterUserDTO,LoginDTO } from "./auth.dto";
 
-/**
- * Authentication Controller
- * Handles user and admin registration, login, and token refresh
- */
+const REFRESH_COOKIE_NAME = 'refreshToken';
+const REFRESH_COOKIE_OPTIONS = (req: Request) => ({
+  httpOnly: true,
+  secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+  sameSite: 'strict' as const,
+  path: '/',
+});
+
 export class AuthController {
   /**
    * Register a new user
-   * @route POST /auth/register/user
-   * @param {RegisterUserDTO} req.body - { fullName, email, password }
-   * @returns {Object} { success, message, data: { accessToken, refreshToken, user } }
+   * @route POST /api/v1/auth/register/user
+   * @param {RegisterUserDTO} req.body - { fullName, email, password, confirmPassword }
+   * @returns {Object} { success, message, data: { accessToken, user } }
    * @example
    * // Request:
-   * POST /auth/register/user
-   * { "fullName": "John Doe", "email": "john@example.com", "password": "password123" }
+   * POST /api/v1/auth/register/user
+   * { "fullName": "John Doe", "email": "john@example.com", "password": "password123", "confirmPassword": "password123" }
    * 
    * // Success Response (201):
-   * { "success": true, "message": "User registered successfully", "data": { "accessToken": "...", "refreshToken": "...", "user": { "id": "...", "fullName": "John Doe", "email": "john@example.com", "role": "user" } } }
+   * { "success": true, "message": "User registered successfully", "data": { "accessToken": "...", "user": { "id": "...", "fullName": "John Doe", "email": "john@example.com", "role": "user" } } }
    * 
    * // Error Response (400):
    * { "success": false, "message": "Email already in use" }
@@ -30,10 +34,13 @@ export class AuthController {
   ) {
     try {
       const authResponse = await AuthService.registerUser(req.body);
+      res.cookie(REFRESH_COOKIE_NAME, authResponse.refreshToken, REFRESH_COOKIE_OPTIONS(req));
       res.status(201).json({
         success: true,
         message: "User registered successfully",
-        data: authResponse,
+        data: {
+          user: authResponse.user,
+        },
       });
     } catch (err) {
       next(err);

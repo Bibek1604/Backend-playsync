@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { AppError } from "../../utils/appError";
+import AppError from "../../Share/utils/AppError";
 
 export const auth = (req: any, _res: any, next: any) => {
   const token = req.headers.authorization?.split(" ")[1];
@@ -15,9 +15,9 @@ export const auth = (req: any, _res: any, next: any) => {
 
 export const authorize =
   (...roles: string[]) =>
-  (req: any, _res: any, next: any) => {
-    if (!roles.includes(req.user.role)) {
-      return next(new AppError("Forbidden", 403));
-    }
-    next();
-  };
+    (req: any, _res: any, next: any) => {
+      if (!roles.includes(req.user.role)) {
+        return next(new AppError("Forbidden", 403));
+      }
+      next();
+    };

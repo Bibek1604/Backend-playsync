@@ -1,37 +1,40 @@
-import { UserRepository } from "../auth/auth.repository";
-import { RegisterUserDTO, RegisterAdminDTO, LoginDTO, AuthResponseDTO } from "../auth/auth.dto";
-import { signAccessToken, signRefreshToken } from "../../config/jwt";
-import { AppError } from "../../utils/appError";
+import { UserRepository } from "./auth.repository";
+import { RegisterUserDTO, RegisterAdminDTO, LoginDTO, AuthResponseDTO } from "./auth.dto";
+import { signAccessToken, signRefreshToken } from "../../Share/config/jwt";
+import AppError from "../../Share/utils/AppError";
 
 const userRepository = new UserRepository();
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "your-super-secret-key-2025"; 
+const ADMIN_SECRET = process.env.ADMIN_SECRET || "your-super-secret-key-2025";
 
 export class AuthService {
-    static async refreshToken(refreshToken: string): Promise<AuthResponseDTO> {
-      const user = await userRepository.findByEmailOrRefreshToken(refreshToken);
-      if (!user || user.refreshToken !== refreshToken) {
-        throw new AppError("Invalid refresh token", 401);
-      }
-      const payload = (await import("../../config/jwt")).verifyToken(refreshToken) as any;
-      if (!payload || user._id.toString() !== payload.id) {
-        throw new AppError("Invalid refresh token payload", 401);
-      }
-      const accessToken = signAccessToken({ id: user._id.toString(), role: user.role });
-      const newRefreshToken = signRefreshToken({ id: user._id.toString(), role: user.role });
-      user.refreshToken = newRefreshToken;
-      await user.save();
-      return {
-        accessToken,
-        refreshToken: newRefreshToken,
-        user: {
-          id: user._id.toString(),
-          fullName: user.fullName,
-          email: user.email,
-          role: user.role,
-        },
-      };
+  static async refreshToken(refreshToken: string): Promise<AuthResponseDTO> {
+    const user = await userRepository.findByEmailOrRefreshToken(refreshToken);
+    if (!user || !user.refreshTokens.includes(refreshToken)) {
+      throw new AppError("Invalid refresh token", 401);
     }
+    const payload = (await import("../../Share/config/jwt")).verifyToken(refreshToken) as any;
+    if (!payload || user._id.toString() !== payload.id) {
+      throw new AppError("Invalid refresh token payload", 401);
+    }
+    const accessToken = signAccessToken({ id: user._id.toString(), role: user.role });
+    const newRefreshToken = signRefreshToken({ id: user._id.toString(), role: user.role });
+    user.refreshTokens = [newRefreshToken];
+    await user.save();
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: user._id.toString(),
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+      },
+    };
+  }
   static async registerUser(dto: RegisterUserDTO): Promise<AuthResponseDTO> {
+    if (dto.password !== dto.confirmPassword) {
+      throw new AppError("Passwords do not match", 400);
+    }
     const existingUser = await userRepository.findByEmail(dto.email);
     if (existingUser) throw new AppError("Email already in use", 400);
 
@@ -43,7 +46,7 @@ export class AuthService {
     const accessToken = signAccessToken({ id: user._id.toString(), role: user.role });
     const refreshToken = signRefreshToken({ id: user._id.toString(), role: user.role });
 
-    user.refreshToken = refreshToken;
+    user.refreshTokens = [refreshToken];
     await user.save();
 
     return {
@@ -59,6 +62,9 @@ export class AuthService {
   }
 
   static async registerAdmin(dto: RegisterAdminDTO): Promise<AuthResponseDTO> {
+    if (dto.password !== dto.confirmPassword) {
+      throw new AppError("Passwords do not match", 400);
+    }
     if (dto.adminCode !== ADMIN_SECRET) {
       throw new AppError("Invalid admin code", 401);
     }
@@ -75,7 +81,7 @@ export class AuthService {
     const refreshToken = signRefreshToken({ id: admin._id.toString(), role: admin.role });
 
     // Save refresh token to admin
-    admin.refreshToken = refreshToken;
+    admin.refreshTokens = [refreshToken];
     await admin.save();
 
     return {
@@ -99,7 +105,7 @@ export class AuthService {
     const accessToken = signAccessToken({ id: user._id.toString(), role: user.role });
     const refreshToken = signRefreshToken({ id: user._id.toString(), role: user.role });
 
-    user.refreshToken = refreshToken;
+    user.refreshTokens = [refreshToken];
     await user.save();
 
     return {

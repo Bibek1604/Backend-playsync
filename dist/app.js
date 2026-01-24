@@ -11,7 +11,16 @@ const path_1 = __importDefault(require("path"));
 const auth_routes_1 = __importDefault(require("./modules/auth/auth.routes"));
 const logger_1 = __importDefault(require("./share/utils/logger"));
 const app = (0, express_1.default)();
-app.use((0, cors_1.default)());
+const corsOptions = {
+    origin: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+    credentials: true,
+    optionsSuccessStatus: 200,
+    preflightContinue: false,
+};
+app.options("*", (0, cors_1.default)(corsOptions));
+app.use((0, cors_1.default)(corsOptions));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 const swaggerOptions = {

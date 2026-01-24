@@ -1,0 +1,14 @@
+src/app.ts(10,20): error TS1261: Already included file name 'C:/Users/bibek/Documents/Developer/playsync-backend/src/share/utils/logger.ts' differs from file name 'C:/Users/bibek/Documents/Developer/playsync-backend/src/Share/utils/logger.ts' only in casing.
+  The file is in the program because:
+    Imported via "./share/utils/logger" from file 'C:/Users/bibek/Documents/Developer/playsync-backend/src/app.ts'
+    Imported via "./share/utils/logger" from file 'C:/Users/bibek/Documents/Developer/playsync-backend/src/server.ts'
+    Matched by include pattern 'src/**/*' in 'C:/Users/bibek/Documents/Developer/playsync-backend/tsconfig.json'
+src/modules/auth/auth.service.ts(12,25): error TS2551: Property 'refreshToken' does not exist on type 'IUser'. Did you mean 'refreshTokens'?
+src/modules/auth/auth.service.ts(21,12): error TS2551: Property 'refreshToken' does not exist on type 'IUser'. Did you mean 'refreshTokens'?
+src/modules/auth/auth.service.ts(49,10): error TS2551: Property 'refreshToken' does not exist on type 'IUser'. Did you mean 'refreshTokens'?
+src/modules/auth/auth.service.ts(84,11): error TS2551: Property 'refreshToken' does not exist on type 'IUser'. Did you mean 'refreshTokens'?
+src/modules/auth/auth.service.ts(108,10): error TS2551: Property 'refreshToken' does not exist on type 'IUser'. Did you mean 'refreshTokens'?
+src/server.ts(4,23): error TS1261: Already included file name 'C:/Users/bibek/Documents/Developer/playsync-backend/src/share/config/db.ts' differs from file name 'C:/Users/bibek/Documents/Developer/playsync-backend/src/Share/config/db.ts' only in casing.
+  The file is in the program because:
+    Imported via "./share/config/db" from file 'C:/Users/bibek/Documents/Developer/playsync-backend/src/server.ts'
+    Matched by include pattern 'src/**/*' in 'C:/Users/bibek/Documents/Developer/playsync-backend/tsconfig.json'

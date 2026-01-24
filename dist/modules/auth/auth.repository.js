@@ -10,8 +10,17 @@ class UserRepository {
     async findByEmail(email) {
         return await auth_model_1.User.findOne({ email });
     }
+    async findByEmailWithPassword(email) {
+        return await auth_model_1.User.findOne({ email }).select("+password");
+    }
     async findById(id) {
         return await auth_model_1.User.findById(id).select("-password");
+    }
+    async findByIdWithPassword(id) {
+        return await auth_model_1.User.findById(id).select("+password");
+    }
+    async updateById(id, updateData) {
+        return await auth_model_1.User.findByIdAndUpdate(id, updateData, { new: true });
     }
     async findByEmailOrRefreshToken(refreshToken) {
         return await auth_model_1.User.findOne({ refreshToken });

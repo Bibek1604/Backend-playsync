@@ -38,8 +38,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const auth_repository_1 = require("./auth.repository");
-const jwt_1 = require("../../share/config/jwt");
-const AppError_1 = __importDefault(require("../../share/utils/AppError"));
+const jwt_1 = require("../../Share/config/jwt");
+const AppError_1 = __importDefault(require("../../Share/utils/AppError"));
 const userRepository = new auth_repository_1.UserRepository();
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "your-super-secret-key-2025";
 class AuthService {
@@ -48,7 +48,7 @@ class AuthService {
         if (!user || user.refreshToken !== refreshToken) {
             throw new AppError_1.default("Invalid refresh token", 401);
         }
-        const payload = (await Promise.resolve().then(() => __importStar(require("../../share/config/jwt")))).verifyToken(refreshToken);
+        const payload = (await Promise.resolve().then(() => __importStar(require("../../Share/config/jwt")))).verifyToken(refreshToken);
         if (!payload || user._id.toString() !== payload.id) {
             throw new AppError_1.default("Invalid refresh token payload", 401);
         }
@@ -123,7 +123,7 @@ class AuthService {
         };
     }
     static async login(dto) {
-        const user = await userRepository.findByEmail(dto.email);
+        const user = await userRepository.findByEmailWithPassword(dto.email);
         if (!user || !(await user.comparePassword(dto.password))) {
             throw new AppError_1.default("Invalid email or password", 401);
         }

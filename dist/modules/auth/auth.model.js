@@ -40,20 +40,80 @@ exports.User = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const userSchema = new mongoose_1.Schema({
-    fullName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true, minlength: 6 },
-    role: { type: String, enum: ["user", "admin"], default: "user" },
-    isVerified: { type: Boolean, default: false },
-    refreshToken: { type: String, default: null },
-}, { timestamps: true });
+    fullName: {
+        type: String,
+        required: [true, "Full name is required"],
+        trim: true,
+        minlength: [2, "Full name must be at least 2 characters"],
+    },
+    email: {
+        type: String,
+        required: [true, "Email is required"],
+        unique: true,
+        lowercase: true,
+        trim: true,
+        match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"],
+    },
+    password: {
+        type: String,
+        required: [true, "Password is required"],
+        minlength: [8, "Password must be at least 8 characters"],
+        select: false,
+    },
+    role: {
+        type: String,
+        enum: ["user", "admin"],
+        default: "user",
+    },
+    isVerified: {
+        type: Boolean,
+        default: false,
+    },
+    refreshTokens: {
+        type: [String],
+        default: [],
+        select: false,
+    },
+    lastLogin: Date,
+    passwordChangedAt: Date,
+    failedLoginAttempts: {
+        type: Number,
+        default: 0,
+        select: false,
+    },
+    lockUntil: {
+        type: Date,
+        select: false,
+    },
+}, {
+    timestamps: true,
+});
 userSchema.pre("save", async function () {
     if (!this.isModified("password"))
         return;
-    this.password = await bcryptjs_1.default.hash(this.password, 10);
+    try {
+        this.password = await bcryptjs_1.default.hash(this.password, 12);
+        this.passwordChangedAt = new Date(Date.now() - 1000);
+    }
+    catch (error) {
+        throw error;
+    }
 });
 userSchema.methods.comparePassword = async function (candidatePassword) {
     return bcryptjs_1.default.compare(candidatePassword, this.password);
+};
+userSchema.methods.isLocked = function () {
+    return !!(this.lockUntil && this.lockUntil > new Date());
+};
+userSchema.methods.changedPasswordAfter = function (jwtTimestamp) {
+    if (this.passwordChangedAt) {
+        const changedTimestamp = parseInt((this.passwordChangedAt.getTime() / 1000).toString(), 10);
+        return jwtTimestamp < changedTimestamp;
+    }
+    return false;
+};
+userSchema.statics.findByEmail = function (email) {
+    return this.findOne({ email: email.toLowerCase() });
 };
 exports.User = mongoose_1.default.model("User", userSchema);
 //# sourceMappingURL=auth.model.js.map

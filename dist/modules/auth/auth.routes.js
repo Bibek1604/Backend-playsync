@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_controller_1 = require("./auth.controller");
-const validateDto_1 = __importDefault(require("../../share/utils/validateDto"));
+const validateDto_1 = __importDefault(require("../../Share/utils/validateDto"));
 const zod_1 = require("zod");
 const registerUserSchema = zod_1.z.object({
     fullName: zod_1.z.string().min(2, "Full name must be at least 2 characters long"),

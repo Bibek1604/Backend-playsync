@@ -18,7 +18,6 @@ class AuthController {
                 success: true,
                 message: "User registered successfully",
                 data: {
-                    accessToken: authResponse.accessToken,
                     user: authResponse.user,
                 },
             });

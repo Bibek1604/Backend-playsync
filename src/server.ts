@@ -1,8 +1,8 @@
 import dotenv from "dotenv";
 import http from "http";
 import app from "./app";
-import connectDB from "./share/config/db";
-import logger from "./share/utils/logger";
+import connectDB from "./Share/config/db";
+import logger from "./Share/utils/logger";
 
 dotenv.config();
 

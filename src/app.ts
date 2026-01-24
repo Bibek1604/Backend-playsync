@@ -6,8 +6,9 @@ import path from "path";
 
 
 import authRoutes from "./modules/auth/auth.routes";
+import profileRoutes from "./modules/profile/profile.routes";
 
-import logger from "./share/utils/logger";
+import logger from "./Share/utils/logger";
 const app = express();
 
 // CORS configuration - Allow all origins for development
@@ -65,6 +66,7 @@ app.use(
 
 
 app.use(`${API_BASE}/auth`, authRoutes);
+app.use(`${API_BASE}/profile`, profileRoutes);
 
 app.get("/", (_req, res) => {
   res.send(

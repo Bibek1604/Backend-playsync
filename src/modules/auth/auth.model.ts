@@ -7,11 +7,17 @@ export interface IUser extends Document {
   password: string;
   role: "user" | "admin";
   isVerified: boolean;
-  refreshTokens: string[];           // ← changed: array for rotation/revocation
+  refreshTokens: string[];
   lastLogin?: Date;
   passwordChangedAt?: Date;
   failedLoginAttempts: number;
   lockUntil?: Date;
+
+  // PROFILE FIELDS
+  phone?: string;
+  favoriteGame?: string;
+  place?: string;
+  profilePicture?: string;
 
   comparePassword(candidatePassword: string): Promise<boolean>;
   isLocked(): boolean;
@@ -63,6 +69,26 @@ const userSchema = new Schema<IUser>(
     lockUntil: {
       type: Date,
       select: false,
+    },
+    // PROFILE FIELDS
+    phone: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    favoriteGame: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    place: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    profilePicture: {
+      type: String,
+      default: "",
     },
   },
   {

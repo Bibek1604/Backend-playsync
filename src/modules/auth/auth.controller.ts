@@ -1,6 +1,6 @@
-import { Request ,Response , NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import { AuthService } from "./auth.service";
-import { RegisterAdminDTO,RegisterUserDTO,LoginDTO } from "./auth.dto";
+import { RegisterAdminDTO, RegisterUserDTO, LoginDTO } from "./auth.dto";
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
 const REFRESH_COOKIE_OPTIONS = (req: Request) => ({
@@ -34,14 +34,12 @@ export class AuthController {
   ) {
     try {
       const authResponse = await AuthService.registerUser(req.body);
-      res.cookie(REFRESH_COOKIE_NAME, authResponse.refreshToken, REFRESH_COOKIE_OPTIONS(req));
+      // FIXED: No cookie or tokens on registration
       res.status(201).json({
         success: true,
         message: "User registered successfully",
         data: {
-          accessToken: authResponse.accessToken,
-          refreshToken: authResponse.refreshToken,
-          user: authResponse.user,
+          user: authResponse.user, // Only return user data, no tokens
         },
       });
     } catch (err) {
@@ -83,7 +81,7 @@ export class AuthController {
     } catch (err) {
       next(err);
     }
-  } 
+  }
 
   /**
    * Login user or admin

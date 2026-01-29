@@ -13,6 +13,7 @@ A modern, secure authentication system built with Node.js, Express, and TypeScri
 - **User Management**
   - User profile retrieval
   - Profile updates
+  - Avatar image upload
   - User listing for admins
   - Role-based access control
 
@@ -216,9 +217,13 @@ POST /auth/refresh-token
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|-------|
-| GET | `/users/me` | Get current user profile | ✅ Yes |
-| PUT | `/users/me` | Update user profile | ✅ Yes |
-| GET | `/users` | List all users | ✅ Yes |
+| POST | `/profile` | Create user profile | ✅ Yes |
+| GET | `/profile` | Get user profile | ✅ Yes |
+| PUT | `/profile` | Update user profile | ✅ Yes |
+| PATCH | `/profile/name` | Update user name | ✅ Yes |
+| PATCH | `/profile/reset-password` | Reset password | ✅ Yes |
+| POST | `/profile/avatar` | Upload avatar image | ✅ Yes |
+| DELETE | `/profile` | Delete user profile | ✅ Yes |
 
 ## 📖 Example Requests
 
@@ -230,6 +235,35 @@ POST /auth/refresh-token
 | 401 | Invalid admin code | Admin registration with wrong code |
 | 401 | Unauthorized | Missing/invalid JWT token |
 | 401 | Invalid refresh token | Refresh with expired/invalid token |
+
+### Upload Avatar Image
+
+**Endpoint:** `POST /api/v1/profile/avatar`
+
+**Headers:**
+```
+Authorization: Bearer <your-jwt-token>
+Content-Type: multipart/form-data
+```
+
+**Body (form-data):**
+- `avatar`: Select an image file (max 5MB, image types only)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Avatar uploaded successfully",
+  "data": {
+    "id": "...",
+    "userId": "...",
+    "avatar": "/uploads/avatars/avatar-1234567890-123456789.jpg",
+    // ... other profile fields
+  }
+}
+```
+
+**Note:** Uploaded images are accessible at `http://localhost:5000/uploads/avatars/filename`
 
 ## 🛠️ Development
 

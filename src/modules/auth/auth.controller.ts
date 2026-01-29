@@ -39,6 +39,8 @@ export class AuthController {
         success: true,
         message: "User registered successfully",
         data: {
+          accessToken: authResponse.accessToken,
+          refreshToken: authResponse.refreshToken,
           user: authResponse.user,
         },
       });

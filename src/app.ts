@@ -27,6 +27,9 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from uploads directory
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 const swaggerOptions: swaggerJsdoc.Options = {
   definition: {
     openapi: "3.0.0",
@@ -76,7 +79,18 @@ app.get("/", (_req, res) => {
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error(err.stack);
-  res.status(500).json({ message: "Internal Server Error" });
+  if (err.statusCode) {
+    const response: any = {
+      message: err.message,
+      errorCode: err.errorCode || 'INTERNAL_ERROR'
+    };
+    if (err.data) {
+      response.data = err.data;
+    }
+    res.status(err.statusCode).json(response);
+  } else {
+    res.status(500).json({ message: "Internal Server Error", errorCode: 'INTERNAL_ERROR' });
+  }
 });
 
 export default app;

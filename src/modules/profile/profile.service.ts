@@ -9,30 +9,45 @@ export const ProfileService = {
   async createProfile(userId: string, dto: CreateProfileDTO) {
     const existing = await ProfileRepository.findByUserId(userId);
     if (existing) throw new AppError("Profile already exists", 400, "PROFILE_EXISTS");
-    const created = await ProfileRepository.create({ userId, ...dto } as any);
+
+    const { name, ...profileData } = dto;
+    if (name) {
+      await ProfileService.updateName(userId, { fullName: name });
+    }
+
+    const created = await ProfileRepository.create({ userId, ...profileData } as any);
     return created;
   },
+
 
   async getProfile(userId: string) {
     return ProfileRepository.findByUserId(userId);
   },
 
   async updateProfile(userId: string, dto: UpdateProfileDTO) {
-    // If fullName provided, update User record
-    if ((dto as any).fullName) {
-      await ProfileService.updateName(userId, { fullName: (dto as any).fullName });
+    // If name provided, update User record
+    if (dto.name) {
+      await ProfileService.updateName(userId, { fullName: dto.name });
     }
 
     // If password fields provided, run password reset flow
-    if ((dto as any).oldPassword && (dto as any).newPassword) {
-      await ProfileService.resetPassword(userId, { oldPassword: (dto as any).oldPassword, newPassword: (dto as any).newPassword });
+    if (dto.currentPassword && dto.changePassword) {
+      await ProfileService.resetPassword(userId, {
+        oldPassword: dto.currentPassword,
+        newPassword: dto.changePassword
+      });
     }
 
-    // Remove user-only fields before updating profile document
-    const { fullName, oldPassword, newPassword, ...profileData } = dto as any;
-    const updated = await ProfileRepository.updateByUserId(userId, profileData as any);
-    return updated; // upsert ensures it will exist
+    // Prepare data for profile update
+    const profileData: any = {};
+    if (dto.number) profileData.number = dto.number;
+    if (dto.place) profileData.place = dto.place;
+    if (dto.favouriteGame) profileData.favouriteGame = dto.favouriteGame;
+
+    const updated = await ProfileRepository.updateByUserId(userId, profileData);
+    return updated;
   },
+
 
   async updateName(userId: string, data: { fullName: string }) {
     const user = await userRepo.findById(userId);

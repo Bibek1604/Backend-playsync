@@ -18,7 +18,19 @@ export const ProfileService = {
   },
 
   async updateProfile(userId: string, dto: UpdateProfileDTO) {
-    const updated = await ProfileRepository.updateByUserId(userId, dto as any);
+    // If fullName provided, update User record
+    if ((dto as any).fullName) {
+      await ProfileService.updateName(userId, { fullName: (dto as any).fullName });
+    }
+
+    // If password fields provided, run password reset flow
+    if ((dto as any).oldPassword && (dto as any).newPassword) {
+      await ProfileService.resetPassword(userId, { oldPassword: (dto as any).oldPassword, newPassword: (dto as any).newPassword });
+    }
+
+    // Remove user-only fields before updating profile document
+    const { fullName, oldPassword, newPassword, ...profileData } = dto as any;
+    const updated = await ProfileRepository.updateByUserId(userId, profileData as any);
     return updated; // upsert ensures it will exist
   },
 

@@ -3,6 +3,8 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 export interface IProfile extends Document {
   userId: Types.ObjectId;
   bio?: string;
+  number?: string;
+  favoriteGame?: string;
   avatar?: string;
   coverPhoto?: string;
   pictures: string[];
@@ -20,6 +22,8 @@ const ProfileSchema = new Schema<IProfile>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     bio: { type: String },
+    number: { type: String },
+    favoriteGame: { type: String },
     avatar: { type: String },
     coverPhoto: { type: String },
     pictures: { type: [String], default: [] },

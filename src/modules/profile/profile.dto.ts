@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const createProfileSchema = z.object({
   bio: z.string().optional(),
+  number: z.string().optional(),
+  favoriteGame: z.string().optional(),
+  avatar: z.string().url().optional(),
   location: z.string().optional(),
   social: z.object({
     facebook: z.string().optional(),
@@ -12,9 +15,15 @@ export const createProfileSchema = z.object({
 
 export type CreateProfileDTO = z.infer<typeof createProfileSchema>;
 
-export const updateProfileSchema = createProfileSchema.partial();
+export const updateProfileSchema = createProfileSchema.partial().extend({
+  fullName: z.string().min(2, "Full name must be at least 2 characters long").optional(),
+  oldPassword: z.string().min(6).optional(),
+  newPassword: z.string().min(6).optional(),
+});
 export type UpdateProfileDTO = z.infer<typeof updateProfileSchema>;
 
 export const updateNameSchema = z.object({ fullName: z.string().min(2, "Full name must be at least 2 characters long") });
 
 export const resetPasswordSchema = z.object({ oldPassword: z.string().min(6), newPassword: z.string().min(6) });
+
+export const removePictureSchema = z.object({ url: z.string().min(1) });

@@ -43,6 +43,7 @@ export const ProfileService = {
     if (dto.number) profileData.number = dto.number;
     if (dto.place) profileData.place = dto.place;
     if (dto.favouriteGame) profileData.favouriteGame = dto.favouriteGame;
+    if (dto.avatar) profileData.avatar = dto.avatar;
 
     const updated = await ProfileRepository.updateByUserId(userId, profileData);
     return updated;

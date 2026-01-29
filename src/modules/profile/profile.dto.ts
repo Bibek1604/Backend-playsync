@@ -2,16 +2,10 @@ import { z } from "zod";
 
 export const createProfileSchema = z.object({
   name: z.string().min(2).optional(),
-  bio: z.string().optional(),
   number: z.string().optional(),
   favouriteGame: z.string().optional(),
   avatar: z.string().url().optional(),
   place: z.string().optional(),
-  social: z.object({
-    facebook: z.string().optional(),
-    twitter: z.string().optional(),
-    instagram: z.string().optional(),
-  }).optional(),
 });
 
 
@@ -22,6 +16,7 @@ export const updateProfileSchema = z.object({
   number: z.string().optional(),
   place: z.string().optional(),
   favouriteGame: z.string().optional(),
+  avatar: z.string().url().optional(),
   currentPassword: z.string().min(6).optional(),
   changePassword: z.string().min(6).optional(),
 });

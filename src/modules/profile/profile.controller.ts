@@ -151,9 +151,9 @@ export class ProfileController {
 
   static async uploadAvatar(req: Request, res: Response, next: NextFunction) {
     try {
-      const file = (req as any).file as Express.Multer.File | undefined;
+      const file = (req as any).file as any;
       if (!file) return next(new AppError("File is required", 400));
-      const url = `${req.protocol}://${req.get("host")}/uploads/avatars/${file.filename}`;
+      const url = file.path; // Cloudinary URL
       const updated = await ProfileService.setAvatar((req as any).user.id, url);
       res.status(200).json({ success: true, message: "Avatar uploaded", data: updated });
     } catch (err) {
@@ -163,9 +163,9 @@ export class ProfileController {
 
   static async uploadCoverPhoto(req: Request, res: Response, next: NextFunction) {
     try {
-      const file = (req as any).file as Express.Multer.File | undefined;
+      const file = (req as any).file as any;
       if (!file) return next(new AppError("File is required", 400));
-      const url = `${req.protocol}://${req.get("host")}/uploads/covers/${file.filename}`;
+      const url = file.path; // Cloudinary URL
       const updated = await ProfileService.setCoverPhoto((req as any).user.id, url);
       res.status(200).json({ success: true, message: "Cover photo uploaded", data: updated });
     } catch (err) {
@@ -175,10 +175,10 @@ export class ProfileController {
 
   static async addPictures(req: Request, res: Response, next: NextFunction) {
     try {
-      const files = (req as any).files as Express.Multer.File[] | undefined;
+      const files = (req as any).files as any[] | undefined;
       if (!files || files.length === 0) return next(new AppError("Files are required", 400));
       const userId = (req as any).user.id;
-      const urls = files.map((f) => `${req.protocol}://${req.get("host")}/uploads/pictures/${f.filename}`);
+      const urls = files.map((f) => f.path); // Cloudinary URLs
       for (const url of urls) {
         await ProfileService.addPicture(userId, url);
       }

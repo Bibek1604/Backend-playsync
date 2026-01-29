@@ -1,36 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { ProfileService } from "./profile.service";
-import { CreateProfileDTO, UpdateProfileDTO } from "./profile.dto";
 import AppError from "../../Share/utils/AppError";
-import { avatarUpload, coverUpload, picturesUpload } from "./profile.uploader";
-export class ProfileController {
-  /**
-   * Create a new profile
-   * @route POST /api/v1/profile
-   * @param {CreateProfileDTO} req.body - Profile data
-   * @returns {Object} { success, message, data: profile }
-   */
-  static async createProfile(
-    req: Request<{}, {}, CreateProfileDTO>,
-    res: Response,
-    next: NextFunction
-  ) {
-    try {
-      const profile = await ProfileService.createProfile((req as any).user.id, req.body);
-      res.status(201).json({
-        success: true,
-        message: "Profile created successfully",
-        data: profile,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
 
+export class ProfileController {
   /**
    * Get user profile
    * @route GET /api/v1/profile
-   * @returns {Object} { success, message, data: profile }
+   * @access Protected
    */
   static async getProfile(
     req: Request,
@@ -38,16 +14,12 @@ export class ProfileController {
     next: NextFunction
   ) {
     try {
-      const profile = await ProfileService.getProfile((req as any).user.id);
-      if (!profile) {
-        return res.status(404).json({
-          success: false,
-          message: "Profile not found",
-        });
-      }
+      const userId = (req as any).user.id;
+      const profile = await ProfileService.getProfile(userId);
+
       res.status(200).json({
         success: true,
-        message: "Profile retrieved successfully",
+        message: "Profile fetched successfully",
         data: profile,
       });
     } catch (err) {
@@ -56,144 +28,68 @@ export class ProfileController {
   }
 
   /**
-   * Update user profile
+   * Update user profile (text fields + optional profile picture)
    * @route PUT /api/v1/profile
-   * @param {UpdateProfileDTO} req.body - Updated profile data
-   * @returns {Object} { success, message, data: profile }
+   * @access Protected
+   * @multipart profilePicture (optional, jpg/png, max 2MB)
    */
   static async updateProfile(
-    req: Request<{}, {}, UpdateProfileDTO>,
-    res: Response,
-    next: NextFunction
-  ) {
-    try {
-      const profile = await ProfileService.updateProfile((req as any).user.id, req.body);
-      res.status(200).json({
-        success: true,
-        message: "Profile updated successfully",
-        data: profile,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  /**
-   * Update user name
-   * @route PATCH /api/v1/profile/name
-   * @param {UpdateNameDTO} req.body - New full name
-   * @returns {Object} { success, message }
-   */
-  static async updateName(
-    req: Request<{}, {}, { fullName: string }>,
-    res: Response,
-    next: NextFunction
-  ) {
-    try {
-      await ProfileService.updateName((req as any).user.id, req.body);
-      res.status(200).json({
-        success: true,
-        message: "Name updated successfully",
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  /**
-   * Reset password
-   * @route PATCH /api/v1/profile/reset-password
-   * @param {PasswordResetDTO} req.body - Old and new passwords
-   * @returns {Object} { success, message }
-   */
-  static async resetPassword(
-    req: Request<{}, {}, any>,
-    res: Response,
-    next: NextFunction
-  ) {
-    try {
-      await ProfileService.resetPassword((req as any).user.id, req.body);
-      res.status(200).json({
-        success: true,
-        message: "Password reset successfully",
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  /**
-   * Delete user profile
-   * @route DELETE /api/v1/profile
-   * @returns {Object} { success, message }
-   */
-  static async deleteProfile(
     req: Request,
     res: Response,
     next: NextFunction
   ) {
     try {
-      const deleted = await ProfileService.deleteProfile((req as any).user.id);
-      if (!deleted) {
-        return res.status(404).json({
-          success: false,
-          message: "Profile not found",
-        });
+      const userId = (req as any).user.id;
+      const updateData = req.body;
+
+      // If file uploaded, add to updateData
+      if ((req as any).file) {
+        updateData.profilePicture = `/uploads/${(req as any).file.filename}`;
       }
+
+      const updatedProfile = await ProfileService.updateProfile(userId, updateData);
+
       res.status(200).json({
         success: true,
-        message: "Profile deleted successfully",
+        message: "Profile updated successfully",
+        data: updatedProfile,
       });
     } catch (err) {
       next(err);
     }
   }
 
-  static async uploadAvatar(req: Request, res: Response, next: NextFunction) {
+  /**
+   * Change user password
+   * @route PUT /api/v1/profile/change-password
+   * @access Protected
+   * @body { currentPassword, newPassword, confirmNewPassword }
+   */
+  static async changePassword(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
     try {
-      const file = (req as any).file as any;
-      if (!file) return next(new AppError("File is required", 400));
-      const url = file.path; // Cloudinary URL
-      const updated = await ProfileService.setAvatar((req as any).user.id, url);
-      res.status(200).json({ success: true, message: "Avatar uploaded", data: updated });
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async uploadCoverPhoto(req: Request, res: Response, next: NextFunction) {
-    try {
-      const file = (req as any).file as any;
-      if (!file) return next(new AppError("File is required", 400));
-      const url = file.path; // Cloudinary URL
-      const updated = await ProfileService.setCoverPhoto((req as any).user.id, url);
-      res.status(200).json({ success: true, message: "Cover photo uploaded", data: updated });
-    } catch (err) {
-      next(err);
-    }
-  }
-
-  static async addPictures(req: Request, res: Response, next: NextFunction) {
-    try {
-      const files = (req as any).files as any[] | undefined;
-      if (!files || files.length === 0) return next(new AppError("Files are required", 400));
       const userId = (req as any).user.id;
-      const urls = files.map((f) => f.path); // Cloudinary URLs
-      for (const url of urls) {
-        await ProfileService.addPicture(userId, url);
-      }
-      const profile = await ProfileService.getProfile(userId);
-      res.status(200).json({ success: true, message: "Pictures uploaded", data: { profile, added: urls } });
-    } catch (err) {
-      next(err);
-    }
-  }
+      const { currentPassword, newPassword, confirmNewPassword } = req.body;
 
-  static async removePicture(req: Request<{}, {}, { url: string }>, res: Response, next: NextFunction) {
-    try {
-      const { url } = req.body;
-      const updated = await ProfileService.removePicture((req as any).user.id, url);
-      res.status(200).json({ success: true, message: "Picture removed", data: updated });
+      // Validate all fields present
+      if (!currentPassword || !newPassword || !confirmNewPassword) {
+        throw new AppError("All password fields are required", 400);
+      }
+
+      // Validate new password matches confirmation
+      if (newPassword !== confirmNewPassword) {
+        throw new AppError("New password and confirmation do not match", 400);
+      }
+
+      await ProfileService.changePassword(userId, currentPassword, newPassword);
+
+      res.status(200).json({
+        success: true,
+        message: "Password changed successfully",
+      });
     } catch (err) {
       next(err);
     }

@@ -1,41 +1,44 @@
 import multer from "multer";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
-import cloudinary from "../../Share/config/cloudinary";
+import path from "path";
+import fs from "fs";
 
-const avatarStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
-    return {
-      folder: "playsync/avatars",
-      allowed_formats: ["jpg", "png", "jpeg", "webp"],
-      public_id: `${Date.now()}-${file.originalname.split(".")[0]}`,
-    };
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const userId = (req as any).user?.id || "unknown";
+    const ext = path.extname(file.originalname);
+    const filename = `${userId}-${Date.now()}${ext}`;
+    cb(null, filename);
   },
 });
 
-const coverStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
-    return {
-      folder: "playsync/covers",
-      allowed_formats: ["jpg", "png", "jpeg", "webp"],
-      public_id: `${Date.now()}-${file.originalname.split(".")[0]}`,
-    };
+// File filter - only allow images
+const fileFilter = (req: any, file: any, cb: any) => {
+  const allowedTypes = /jpeg|jpg|png/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+
+  if (extname && mimetype) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only .jpg, .jpeg, and .png files are allowed"), false);
+  }
+};
+
+// Export multer upload instance
+export const profilePictureUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB limit
   },
+  fileFilter: fileFilter,
 });
-
-const picturesStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
-    return {
-      folder: "playsync/pictures",
-      allowed_formats: ["jpg", "png", "jpeg", "webp"],
-      public_id: `${Date.now()}-${file.originalname.split(".")[0]}`,
-    };
-  },
-});
-
-export const avatarUpload = multer({ storage: avatarStorage });
-export const coverUpload = multer({ storage: coverStorage });
-export const picturesUpload = multer({ storage: picturesStorage });
-

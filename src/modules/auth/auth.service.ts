@@ -43,15 +43,11 @@ export class AuthService {
       role: "user",
     });
 
-    const accessToken = signAccessToken({ id: user._id.toString(), role: user.role });
-    const refreshToken = signRefreshToken({ id: user._id.toString(), role: user.role });
-
-    user.refreshTokens = [refreshToken];
-    await user.save();
-
+    // FIXED: Registration should NOT generate tokens
+    // Users must login separately after registration
     return {
-      accessToken,
-      refreshToken,
+      accessToken: "", // Empty token for registration
+      refreshToken: "", // Empty token for registration
       user: {
         id: user._id.toString(),
         fullName: user.fullName,

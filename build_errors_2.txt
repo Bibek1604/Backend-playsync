@@ -1,5 +1,0 @@
-src/modules/auth/auth.service.ts(12,25): error TS2551: Property 'refreshToken' does not exist on type 'IUser'. Did you mean 'refreshTokens'?
-src/modules/auth/auth.service.ts(21,12): error TS2551: Property 'refreshToken' does not exist on type 'IUser'. Did you mean 'refreshTokens'?
-src/modules/auth/auth.service.ts(49,10): error TS2551: Property 'refreshToken' does not exist on type 'IUser'. Did you mean 'refreshTokens'?
-src/modules/auth/auth.service.ts(84,11): error TS2551: Property 'refreshToken' does not exist on type 'IUser'. Did you mean 'refreshTokens'?
-src/modules/auth/auth.service.ts(108,10): error TS2551: Property 'refreshToken' does not exist on type 'IUser'. Did you mean 'refreshTokens'?

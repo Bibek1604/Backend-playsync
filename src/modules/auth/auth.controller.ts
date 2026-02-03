@@ -155,4 +155,49 @@ export class AuthController {
       next(err);
     }
   }
+
+  /**
+   * Get all registered users (Admin only)
+   * @route GET /auth/users
+   * @returns {Object} { success, message, data: [users] }
+   */
+  static async getAllUsers(
+    _req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const users = await AuthService.getAllUsers();
+      res.status(200).json({
+        success: true,
+        message: "Users retrieved successfully",
+        data: users,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Logout user
+   * @route POST /auth/logout
+   * @returns {Object} { success, message }
+   */
+  static async logout(
+    req: any,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      if (req.user && req.user.id) {
+        await AuthService.logout(req.user.id);
+      }
+      res.status(200).json({
+        success: true,
+        message: "Logged out successfully",
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

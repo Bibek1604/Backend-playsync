@@ -41,4 +41,8 @@ export class UserRepository implements IUserRepository {
   async findByEmailOrRefreshToken(refreshToken: string): Promise<IUser | null> {
     return await User.findOne({ refreshToken });
   }
+
+  async findAll(filter: any = {}): Promise<IUser[]> {
+    return await User.find(filter).select("-password -refreshTokens");
+  }
 }

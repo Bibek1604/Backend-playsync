@@ -115,4 +115,16 @@ export class AuthService {
       },
     };
   }
+
+  static async getAllUsers() {
+    return await userRepository.findAll({ role: "user" });
+  }
+
+  static async logout(userId: string) {
+    const user = await userRepository.findById(userId);
+    if (user) {
+      user.refreshTokens = [];
+      await user.save();
+    }
+  }
 }

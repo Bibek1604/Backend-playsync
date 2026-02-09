@@ -6,7 +6,7 @@
 import { GameRepository } from './game.repository';
 import { IGameDocument } from './game.model';
 import { CreateGameDTO, UpdateGameDTO } from './game.dto';
-import { AppError } from '../../Share/utils/AppError';
+import AppError from '../../Share/utils/AppError';
 import { uploadToCloudinary, deleteFromCloudinary } from './game.uploader';
 import { GameStatus, IGameFilters, IPaginationParams } from './game.types';
 

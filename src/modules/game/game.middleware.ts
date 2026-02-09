@@ -5,7 +5,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { GameRepository } from './game.repository';
-import { AppError } from '../../Share/utils/AppError';
+import AppError from '../../Share/utils/AppError';
 import { GameStatus } from './game.types';
 
 const gameRepository = new GameRepository();

@@ -28,6 +28,6 @@ export const seedAdmin = async () => {
             logger.info("Admin user already exists");
         }
     } catch (error) {
-        logger.error("Error seeding admin user:", error);
+        logger.error({ err: error }, "Error seeding admin user");
     }
 };

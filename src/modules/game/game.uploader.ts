@@ -6,7 +6,7 @@
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { Readable } from 'stream';
-import { AppError } from '../../Share/utils/AppError';
+import AppError from '../../Share/utils/AppError';
 
 // Multer configuration - store in memory for cloudinary upload
 const storage = multer.memoryStorage();

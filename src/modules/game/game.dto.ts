@@ -22,7 +22,7 @@ export const createGameSchema = z.object({
       .optional(),
     
     category: z.nativeEnum(GameCategory, {
-      errorMap: () => ({ message: 'Category must be either ONLINE or OFFLINE' })
+      message: 'Category must be either ONLINE or OFFLINE'
     }),
     
     maxPlayers: z

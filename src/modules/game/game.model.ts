@@ -122,8 +122,9 @@ const gameSchema = new Schema<IGameDocument>(
       type: Date,
       required: [true, 'End time is required'],
       validate: {
-        validator: function(this: IGameDocument, value: Date) {
-          return value > this.startTime;
+        validator: function(value: Date) {
+          const doc = this as IGameDocument;
+          return value > doc.startTime;
         },
         message: 'End time must be after start time'
       }
@@ -166,25 +167,25 @@ gameSchema.virtual('creator', {
 });
 
 // Pre-save middleware to validate
-gameSchema.pre('save', function(next) {
+gameSchema.pre('save', async function() {
+  const doc = this as IGameDocument;
+  
   // Validate currentPlayers doesn't exceed maxPlayers
-  if (this.currentPlayers > this.maxPlayers) {
-    next(new Error('Current players cannot exceed max players'));
+  if (doc.currentPlayers > doc.maxPlayers) {
+    throw new Error('Current players cannot exceed max players');
   }
   
   // Validate end time is in the future (only for new games)
-  if (this.isNew && this.endTime <= new Date()) {
-    next(new Error('End time must be in the future'));
+  if (this.isNew && doc.endTime <= new Date()) {
+    throw new Error('End time must be in the future');
   }
   
   // Auto-update status based on current players
-  if (this.currentPlayers >= this.maxPlayers && this.status === GameStatus.OPEN) {
-    this.status = GameStatus.FULL;
-  } else if (this.currentPlayers < this.maxPlayers && this.status === GameStatus.FULL) {
-    this.status = GameStatus.OPEN;
+  if (doc.currentPlayers >= doc.maxPlayers && doc.status === GameStatus.OPEN) {
+    doc.status = GameStatus.FULL;
+  } else if (doc.currentPlayers < doc.maxPlayers && doc.status === GameStatus.FULL) {
+    doc.status = GameStatus.OPEN;
   }
-  
-  next();
 });
 
 // Model

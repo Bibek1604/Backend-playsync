@@ -6,7 +6,7 @@
 
 import cron from 'node-cron';
 import { GameService } from '../modules/game/game.service';
-import { logger } from '../Share/utils/logger';
+import logger from '../Share/utils/logger';
 
 class GameCleanupJob {
   private gameService: GameService;
@@ -58,9 +58,9 @@ class GameCleanupJob {
         logger.info(`✅ Game cleanup completed: No expired games found (${executionTime}ms)`);
       }
     } catch (error: any) {
-      logger.error('❌ Game cleanup job failed:', {
-        error: error.message,
-        stack: error.stack
+      logger.error({
+        err: error,
+        message: '❌ Game cleanup job failed'
       });
     } finally {
       this.isRunning = false;

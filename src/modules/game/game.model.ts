@@ -153,10 +153,22 @@ gameSchema.index({ endTime: 1, status: 1 });
 gameSchema.index({ 'participants.userId': 1 });
 gameSchema.index({ title: 'text', description: 'text' }); // Text search
 
+// Additional indexes for discovery and join performance
+gameSchema.index({ status: 1, currentPlayers: 1, maxPlayers: 1 });
+gameSchema.index({ startTime: 1, status: 1 });
+gameSchema.index({ category: 1, status: 1 });
+gameSchema.index({ createdAt: -1 });
+
 // Compound index for active games query
 gameSchema.index({ status: 1, endTime: 1 }, { 
   partialFilterExpression: { status: { $in: [GameStatus.OPEN, GameStatus.FULL] } } 
 });
+
+// Compound index for common discovery queries
+gameSchema.index(
+  { status: 1, category: 1, startTime: 1 },
+  { name: 'discovery_compound_idx' }
+);
 
 // Virtual for creator population
 gameSchema.virtual('creator', {
@@ -164,6 +176,11 @@ gameSchema.virtual('creator', {
   localField: 'creatorId',
   foreignField: '_id',
   justOne: true
+});
+
+// Virtual for available slots calculation
+gameSchema.virtual('availableSlots').get(function(this: IGameDocument) {
+  return Math.max(0, this.maxPlayers - this.currentPlayers);
 });
 
 // Pre-save middleware to validate

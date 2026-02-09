@@ -4,10 +4,8 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { GameService } from './game.service';
 import { apiResponse } from '../../Share/utils/apiResponse';
-
-const gameService = new GameService();
+import { getGameService } from './game.service.factory';
 
 export class GameController {
   
@@ -69,6 +67,7 @@ export class GameController {
    */
   async create(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const gameService = getGameService();
       const userId = (req as any).user?.id;
       const gameData = req.body;
       const imageFile = req.file;
@@ -117,6 +116,33 @@ export class GameController {
    *           type: string
    *         description: Search in title and description
    *       - in: query
+   *         name: availableSlots
+   *         schema:
+   *           type: boolean
+   *         description: Filter games with available slots
+   *       - in: query
+   *         name: minPlayers
+   *         schema:
+   *           type: integer
+   *         description: Minimum player capacity
+   *       - in: query
+   *         name: maxPlayers
+   *         schema:
+   *           type: integer
+   *         description: Maximum player capacity
+   *       - in: query
+   *         name: sortBy
+   *         schema:
+   *           type: string
+   *           enum: [createdAt, startTime, endTime, popularity]
+   *         description: Sort field
+   *       - in: query
+   *         name: sortOrder
+   *         schema:
+   *           type: string
+   *           enum: [asc, desc]
+   *         description: Sort order
+   *       - in: query
    *         name: page
    *         schema:
    *           type: integer
@@ -135,11 +161,20 @@ export class GameController {
    */
   async getAll(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const gameService = getGameService();
       const filters = {
         category: req.query.category as any,
         status: req.query.status as any,
         creatorId: req.query.creatorId as string,
-        search: req.query.search as string
+        search: req.query.search as string,
+        availableSlots: req.query.availableSlots === 'true',
+        minPlayers: req.query.minPlayers ? parseInt(req.query.minPlayers as string) : undefined,
+        maxPlayers: req.query.maxPlayers ? parseInt(req.query.maxPlayers as string) : undefined,
+        startTimeFrom: req.query.startTimeFrom ? new Date(req.query.startTimeFrom as string) : undefined,
+        startTimeTo: req.query.startTimeTo ? new Date(req.query.startTimeTo as string) : undefined,
+        includeEnded: req.query.includeEnded === 'true',
+        sortBy: req.query.sortBy as any,
+        sortOrder: req.query.sortOrder as any
       };
 
       const pagination = {
@@ -186,6 +221,7 @@ export class GameController {
    */
   async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const gameService = getGameService();
       const gameId = req.params.id;
       const includeDetails = req.query.details === 'true';
 
@@ -238,6 +274,7 @@ export class GameController {
    */
   async getMyCreatedGames(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const gameService = getGameService();
       const userId = (req as any).user?.id;
 
       const filters = {
@@ -299,6 +336,7 @@ export class GameController {
    */
   async getMyJoinedGames(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const gameService = getGameService();
       const userId = (req as any).user?.id;
 
       const filters = {
@@ -364,6 +402,7 @@ export class GameController {
    */
   async update(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const gameService = getGameService();
       const gameId = req.params.id;
       const userId = (req as any).user?.id;
       const updateData = req.body;
@@ -403,6 +442,7 @@ export class GameController {
    */
   async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const gameService = getGameService();
       const gameId = req.params.id;
       const userId = (req as any).user?.id;
 
@@ -437,9 +477,12 @@ export class GameController {
    *         description: Successfully joined the game
    *       400:
    *         description: Game is full or ended
+   *       409:
+   *         description: Conflict - race condition or already joined
    */
   async join(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const gameService = getGameService();
       const gameId = req.params.id;
       const userId = (req as any).user?.id;
 
@@ -447,9 +490,14 @@ export class GameController {
 
       res.status(200).json(
         apiResponse(true, 'Successfully joined the game', {
-          gameId: game._id,
-          currentPlayers: game.currentPlayers,
-          status: game.status
+          game: {
+            id: game._id,
+            title: game.title,
+            status: game.status,
+            currentPlayers: game.currentPlayers,
+            maxPlayers: game.maxPlayers,
+            availableSlots: game.maxPlayers - game.currentPlayers
+          }
         })
       );
     } catch (error) {
@@ -481,6 +529,7 @@ export class GameController {
    */
   async leave(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const gameService = getGameService();
       const gameId = req.params.id;
       const userId = (req as any).user?.id;
 
@@ -488,10 +537,50 @@ export class GameController {
 
       res.status(200).json(
         apiResponse(true, 'Successfully left the game', {
-          gameId: game._id,
-          currentPlayers: game.currentPlayers,
-          status: game.status
+          game: {
+            id: game._id,
+            status: game.status,
+            currentPlayers: game.currentPlayers,
+            maxPlayers: game.maxPlayers,
+            availableSlots: game.maxPlayers - game.currentPlayers
+          }
         })
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/games/{id}/can-join:
+   *   get:
+   *     tags:
+   *       - Games
+   *     summary: Check if user can join game
+   *     description: Check join eligibility before attempting to join
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Join eligibility checked
+   */
+  async canJoin(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gameService = getGameService();
+      const gameId = req.params.id;
+      const userId = (req as any).user?.id;
+
+      const eligibility = await gameService.checkJoinEligibility(gameId, userId);
+
+      res.status(200).json(
+        apiResponse(true, 'Join eligibility checked', eligibility)
       );
     } catch (error) {
       next(error);

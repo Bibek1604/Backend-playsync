@@ -51,7 +51,7 @@ export const createGameSchema = z.object({
       }, 'End time cannot be more than 365 days from now')
       .transform((val) => new Date(val))
   })
-}).strict();
+}).passthrough(); // Allow other fields like file uploads
 
 // Update Game DTO
 export const updateGameSchema = z.object({
@@ -89,15 +89,15 @@ export const updateGameSchema = z.object({
       }, 'End time must be in the future')
       .transform((val) => new Date(val))
       .optional()
-  }).strict()
-}).strict();
+  })
+}).passthrough(); // Allow other fields like file uploads
 
 // Query Parameters for Get All Games
 export const getGamesQuerySchema = z.object({
   query: z.object({
     category: z.nativeEnum(GameCategory).optional(),
     status: z.nativeEnum(GameStatus).optional(),
-    creatorId: z.string().uuid().optional(),
+    creatorId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid creator ID format').optional(),
     search: z.string().max(100).optional(),
     page: z
       .string()
@@ -110,14 +110,14 @@ export const getGamesQuerySchema = z.object({
       .transform((val) => (val ? parseInt(val, 10) : 20))
       .refine((val) => val > 0 && val <= 100, 'Limit must be between 1 and 100')
   })
-}).strict();
+}).passthrough();
 
 // Game ID Parameter Validation
 export const gameIdParamSchema = z.object({
   params: z.object({
-    id: z.string().uuid('Invalid game ID format')
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid game ID format')
   })
-}).strict();
+}).passthrough();
 
 // Type exports
 export type CreateGameDTO = z.infer<typeof createGameSchema>['body'];

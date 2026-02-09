@@ -43,7 +43,7 @@ exports.createGameSchema = zod_1.z.object({
         }, 'End time cannot be more than 365 days from now')
             .transform((val) => new Date(val))
     })
-}).strict();
+}).passthrough();
 exports.updateGameSchema = zod_1.z.object({
     body: zod_1.z.object({
         title: zod_1.z
@@ -76,13 +76,13 @@ exports.updateGameSchema = zod_1.z.object({
         }, 'End time must be in the future')
             .transform((val) => new Date(val))
             .optional()
-    }).strict()
-}).strict();
+    })
+}).passthrough();
 exports.getGamesQuerySchema = zod_1.z.object({
     query: zod_1.z.object({
         category: zod_1.z.nativeEnum(game_types_1.GameCategory).optional(),
         status: zod_1.z.nativeEnum(game_types_1.GameStatus).optional(),
-        creatorId: zod_1.z.string().uuid().optional(),
+        creatorId: zod_1.z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid creator ID format').optional(),
         search: zod_1.z.string().max(100).optional(),
         page: zod_1.z
             .string()
@@ -95,10 +95,10 @@ exports.getGamesQuerySchema = zod_1.z.object({
             .transform((val) => (val ? parseInt(val, 10) : 20))
             .refine((val) => val > 0 && val <= 100, 'Limit must be between 1 and 100')
     })
-}).strict();
+}).passthrough();
 exports.gameIdParamSchema = zod_1.z.object({
     params: zod_1.z.object({
-        id: zod_1.z.string().uuid('Invalid game ID format')
+        id: zod_1.z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid game ID format')
     })
-}).strict();
+}).passthrough();
 //# sourceMappingURL=game.dto.js.map

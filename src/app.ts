@@ -37,11 +37,12 @@ const swaggerOptions: swaggerJsdoc.Options = {
     info: {
       title: "PlaySync API",
       version: "1.0.0",
-      description: "API documentation for PlaySync "
+      description: "API documentation for PlaySync - Gaming Platform Backend"
     },
     servers: [
       {
-        url: "http://localhost:5000"
+        url: "http://localhost:5000",
+        description: "Local development server"
       }
     ],
     components: {
@@ -49,13 +50,17 @@ const swaggerOptions: swaggerJsdoc.Options = {
         bearerAuth: {
           type: "http",
           scheme: "bearer",
-          bearerFormat: "JWT"
+          bearerFormat: "JWT",
+          description: "Enter JWT token obtained from login (without 'Bearer' prefix)"
         }
       }
     },
     security: [{ bearerAuth: [] }]
   },
-  apis: [path.join(__dirname, "modules/**/*.ts")]
+  apis: [
+    path.join(__dirname, "modules/**/*.ts"),
+    path.join(__dirname, "modules/**/*.swagger.ts")
+  ]
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);

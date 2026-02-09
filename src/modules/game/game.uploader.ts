@@ -109,7 +109,7 @@ export const validateImageDimensions = async (
             reject(new AppError('Image dimensions cannot exceed 4000x4000 pixels', 400));
           }
           
-          resolve { width, height });
+          resolve({ width, height });
         }
       }
     );

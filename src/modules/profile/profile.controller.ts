@@ -4,9 +4,48 @@ import AppError from "../../Share/utils/AppError";
 
 export class ProfileController {
   /**
-   * Get user profile
-   * @route GET /api/v1/profile
-   * @access Protected
+   * @swagger
+   * /api/v1/profile:
+   *   get:
+   *     tags:
+   *       - Profile
+   *     summary: Get user profile
+   *     description: Retrieve the authenticated user's profile information
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Profile fetched successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: Profile fetched successfully
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     _id:
+   *                       type: string
+   *                     fullName:
+   *                       type: string
+   *                     email:
+   *                       type: string
+   *                     phone:
+   *                       type: string
+   *                     favoriteGame:
+   *                       type: string
+   *                     place:
+   *                       type: string
+   *                     profilePicture:
+   *                       type: string
+   *       401:
+   *         description: Unauthorized
    */
   static async getProfile(
     req: Request,
@@ -28,10 +67,39 @@ export class ProfileController {
   }
 
   /**
-   * Update user profile (text fields + optional profile picture)
-   * @route PUT /api/v1/profile
-   * @access Protected
-   * @multipart profilePicture (optional, jpg/png, max 2MB)
+   * @swagger
+   * /api/v1/profile:
+   *   put:
+   *     tags:
+   *       - Profile
+   *     summary: Update user profile
+   *     description: Update user profile information with optional profile picture upload
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               phone:
+   *                 type: string
+   *                 example: "+1234567890"
+   *               favoriteGame:
+   *                 type: string
+   *                 example: "Chess"
+   *               place:
+   *                 type: string
+   *                 example: "New York, USA"
+   *               profilePicture:
+   *                 type: string
+   *                 format: binary
+   *                 description: Profile picture (max 2MB, jpg/png)
+   *     responses:
+   *       200:
+   *         description: Profile updated successfully
+   *       401:
+   *         description: Unauthorized
    */
   static async updateProfile(
     req: Request,
@@ -60,10 +128,46 @@ export class ProfileController {
   }
 
   /**
-   * Change user password
-   * @route PUT /api/v1/profile/change-password
-   * @access Protected
-   * @body { currentPassword, newPassword, confirmNewPassword }
+   * @swagger
+   * /api/v1/profile/change-password:
+   *   put:
+   *     tags:
+   *       - Profile
+   *     summary: Change user password
+   *     description: Change the authenticated user's password
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - currentPassword
+   *               - newPassword
+   *               - confirmNewPassword
+   *             properties:
+   *               currentPassword:
+   *                 type: string
+   *                 format: password
+   *                 example: "oldPassword123"
+   *               newPassword:
+   *                 type: string
+   *                 format: password
+   *                 minLength: 6
+   *                 example: "newPassword123"
+   *               confirmNewPassword:
+   *                 type: string
+   *                 format: password
+   *                 example: "newPassword123"
+   *     responses:
+   *       200:
+   *         description: Password changed successfully
+   *       400:
+   *         description: Invalid input or passwords don't match
+   *       401:
+   *         description: Unauthorized or current password incorrect
    */
   static async changePassword(
     req: Request,

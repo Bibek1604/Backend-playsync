@@ -12,20 +12,32 @@ const REFRESH_COOKIE_OPTIONS = (req: Request) => ({
 
 export class AuthController {
   /**
-   * Register a new user
-   * @route POST /api/v1/auth/register/user
-   * @param {RegisterUserDTO} req.body - { fullName, email, password, confirmPassword }
-   * @returns {Object} { success, message, data: { accessToken, user } }
-   * @example
-   * // Request:
-   * POST /api/v1/auth/register/user
-   * { "fullName": "John Doe", "email": "john@example.com", "password": "password123", "confirmPassword": "password123" }
-   * 
-   * // Success Response (201):
-   * { "success": true, "message": "User registered successfully", "data": { "accessToken": "...", "user": { "id": "...", "fullName": "John Doe", "email": "john@example.com", "role": "user" } } }
-   * 
-   * // Error Response (400):
-   * { "success": false, "message": "Email already in use" }
+   * @swagger
+   * /api/v1/auth/register/user:
+   *   post:
+   *     tags:
+   *       - Authentication
+   *     summary: Register a new user
+   *     description: Register a new user account. User will need to verify email before logging in.
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/RegisterUserRequest'
+   *     responses:
+   *       201:
+   *         description: User registered successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/RegisterUserResponse'
+   *       400:
+   *         description: Bad request - Email already in use or validation error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
    */
   static async registerUser(
     req: Request<{}, {}, RegisterUserDTO>,
@@ -48,23 +60,38 @@ export class AuthController {
   }
 
   /**
-   * Register a new admin
-   * @route POST /auth/register/admin
-   * @param {RegisterAdminDTO} req.body - { fullName, email, password, adminCode }
-   * @returns {Object} { success, message, data: { accessToken, refreshToken, user } }
-   * @example
-   * // Request:
-   * POST /auth/register/admin
-   * { "fullName": "Admin User", "email": "admin@example.com", "password": "admin123", "adminCode": "your-super-secret-key-2025" }
-   * 
-   * // Success Response (201):
-   * { "success": true, "message": "Admin registered successfully", "data": { "accessToken": "...", "refreshToken": "...", "user": { "id": "...", "fullName": "Admin User", "email": "admin@example.com", "role": "admin" } } }
-   * 
-   * // Error Response - Invalid Code (401):
-   * { "success": false, "message": "Invalid admin code" }
-   * 
-   * // Error Response - Email Exists (400):
-   * { "success": false, "message": "Email already in use" }
+   * @swagger
+   * /api/v1/auth/register/admin:
+   *   post:
+   *     tags:
+   *       - Authentication
+   *     summary: Register a new admin
+   *     description: Register a new admin account using admin code
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/RegisterAdminRequest'
+   *     responses:
+   *       201:
+   *         description: Admin registered successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/AuthResponse'
+   *       400:
+   *         description: Bad request - Email already in use or validation error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *       401:
+   *         description: Unauthorized - Invalid admin code
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
    */
   static async registerAdmin(
     req: Request<{}, {}, RegisterAdminDTO>,
@@ -84,20 +111,32 @@ export class AuthController {
   }
 
   /**
-   * Login user or admin
-   * @route POST /auth/login
-   * @param {LoginDTO} req.body - { email, password }
-   * @returns {Object} { success, message, data: { accessToken, refreshToken, user } }
-   * @example
-   * // Request:
-   * POST /auth/login
-   * { "email": "john@example.com", "password": "password123" }
-   * 
-   * // Success Response (200):
-   * { "success": true, "message": "Login successful", "data": { "accessToken": "...", "refreshToken": "...", "user": { "id": "...", "fullName": "John Doe", "email": "john@example.com", "role": "user" } } }
-   * 
-   * // Error Response (401):
-   * { "success": false, "message": "Invalid email or password" }
+   * @swagger
+   * /api/v1/auth/login:
+   *   post:
+   *     tags:
+   *       - Authentication
+   *     summary: Login user or admin
+   *     description: Authenticate user and receive access and refresh tokens
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/LoginRequest'
+   *     responses:
+   *       200:
+   *         description: Login successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/AuthResponse'
+   *       401:
+   *         description: Unauthorized - Invalid email or password
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
    */
   static async login(
     req: Request<{}, {}, LoginDTO>,
@@ -117,23 +156,38 @@ export class AuthController {
   }
 
   /**
-   * Refresh access token using refresh token
-   * @route POST /auth/refresh-token
-   * @param {Object} req.body - { refreshToken }
-   * @returns {Object} { success, message, data: { accessToken, refreshToken, user } }
-   * @example
-   * // Request:
-   * POST /auth/refresh-token
-   * { "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
-   * 
-   * // Success Response (200):
-   * { "success": true, "message": "Token refreshed successfully", "data": { "accessToken": "...", "refreshToken": "...", "user": { "id": "...", "fullName": "John Doe", "email": "john@example.com", "role": "user" } } }
-   * 
-   * // Error Response (401):
-   * { "success": false, "message": "Invalid refresh token" }
-   * 
-   * // Error Response - Missing Token (400):
-   * { "success": false, "message": "Refresh token required" }
+   * @swagger
+   * /api/v1/auth/refresh-token:
+   *   post:
+   *     tags:
+   *       - Authentication
+   *     summary: Refresh access token
+   *     description: Get new access and refresh tokens using a valid refresh token
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/RefreshTokenRequest'
+   *     responses:
+   *       200:
+   *         description: Token refreshed successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/AuthResponse'
+   *       400:
+   *         description: Bad request - Refresh token required
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   *       401:
+   *         description: Unauthorized - Invalid refresh token
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
    */
   static async refreshToken(
     req: Request,
@@ -150,6 +204,90 @@ export class AuthController {
         success: true,
         message: "Token refreshed successfully",
         data: authResponse,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/auth/users:
+   *   get:
+   *     tags:
+   *       - Authentication
+   *     summary: Get all users
+   *     description: Retrieve list of all registered users (Admin only)
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Users retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/UsersListResponse'
+   *       401:
+   *         description: Unauthorized - JWT token required
+   *       403:
+   *         description: Forbidden - Admin access required
+   */
+  static async getAllUsers(
+    _req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const users = await AuthService.getAllUsers();
+      res.status(200).json({
+        success: true,
+        message: "Users retrieved successfully",
+        data: users,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/auth/logout:
+   *   post:
+   *     tags:
+   *       - Authentication
+   *     summary: Logout user
+   *     description: Logout currently authenticated user and invalidate tokens
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Logged out successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: Logged out successfully
+   *       401:
+   *         description: Unauthorized - JWT token required
+   */
+  static async logout(
+    req: any,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      if (req.user && req.user.id) {
+        await AuthService.logout(req.user.id);
+      }
+      res.status(200).json({
+        success: true,
+        message: "Logged out successfully",
       });
     } catch (err) {
       next(err);

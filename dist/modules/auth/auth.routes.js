@@ -7,6 +7,7 @@ const express_1 = require("express");
 const auth_controller_1 = require("./auth.controller");
 const validateDto_1 = __importDefault(require("../../Share/utils/validateDto"));
 const zod_1 = require("zod");
+const auth_middleware_1 = require("./auth.middleware");
 const registerUserSchema = zod_1.z.object({
     fullName: zod_1.z.string().min(2, "Full name must be at least 2 characters long"),
     email: zod_1.z.string().email("Invalid email address"),
@@ -38,5 +39,7 @@ const refreshTokenSchema = zod_1.z.object({
     refreshToken: zod_1.z.string().min(1, "Refresh token is required"),
 });
 router.post("/refresh-token", (0, validateDto_1.default)(refreshTokenSchema), auth_controller_1.AuthController.refreshToken);
+router.post("/logout", auth_middleware_1.auth, auth_controller_1.AuthController.logout);
+router.get("/users", auth_middleware_1.auth, (0, auth_middleware_1.authorize)("admin"), auth_controller_1.AuthController.getAllUsers);
 exports.default = router;
 //# sourceMappingURL=auth.routes.js.map

@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameController = void 0;
-const game_service_1 = require("./game.service");
 const apiResponse_1 = require("../../Share/utils/apiResponse");
-const gameService = new game_service_1.GameService();
+const game_service_factory_1 = require("./game.service.factory");
 class GameController {
     async create(req, res, next) {
         try {
+            const gameService = (0, game_service_factory_1.getGameService)();
             const userId = req.user?.id;
             const gameData = req.body;
             const imageFile = req.file;
@@ -21,11 +21,20 @@ class GameController {
     }
     async getAll(req, res, next) {
         try {
+            const gameService = (0, game_service_factory_1.getGameService)();
             const filters = {
                 category: req.query.category,
                 status: req.query.status,
                 creatorId: req.query.creatorId,
-                search: req.query.search
+                search: req.query.search,
+                availableSlots: req.query.availableSlots === 'true',
+                minPlayers: req.query.minPlayers ? parseInt(req.query.minPlayers) : undefined,
+                maxPlayers: req.query.maxPlayers ? parseInt(req.query.maxPlayers) : undefined,
+                startTimeFrom: req.query.startTimeFrom ? new Date(req.query.startTimeFrom) : undefined,
+                startTimeTo: req.query.startTimeTo ? new Date(req.query.startTimeTo) : undefined,
+                includeEnded: req.query.includeEnded === 'true',
+                sortBy: req.query.sortBy,
+                sortOrder: req.query.sortOrder
             };
             const pagination = {
                 page: parseInt(req.query.page) || 1,
@@ -40,6 +49,7 @@ class GameController {
     }
     async getById(req, res, next) {
         try {
+            const gameService = (0, game_service_factory_1.getGameService)();
             const gameId = req.params.id;
             const includeDetails = req.query.details === 'true';
             const game = await gameService.getGameById(gameId, includeDetails);
@@ -51,6 +61,7 @@ class GameController {
     }
     async getMyCreatedGames(req, res, next) {
         try {
+            const gameService = (0, game_service_factory_1.getGameService)();
             const userId = req.user?.id;
             const filters = {
                 category: req.query.category,
@@ -69,6 +80,7 @@ class GameController {
     }
     async getMyJoinedGames(req, res, next) {
         try {
+            const gameService = (0, game_service_factory_1.getGameService)();
             const userId = req.user?.id;
             const filters = {
                 category: req.query.category,
@@ -87,6 +99,7 @@ class GameController {
     }
     async update(req, res, next) {
         try {
+            const gameService = (0, game_service_factory_1.getGameService)();
             const gameId = req.params.id;
             const userId = req.user?.id;
             const updateData = req.body;
@@ -100,6 +113,7 @@ class GameController {
     }
     async delete(req, res, next) {
         try {
+            const gameService = (0, game_service_factory_1.getGameService)();
             const gameId = req.params.id;
             const userId = req.user?.id;
             await gameService.deleteGame(gameId, userId);
@@ -111,13 +125,19 @@ class GameController {
     }
     async join(req, res, next) {
         try {
+            const gameService = (0, game_service_factory_1.getGameService)();
             const gameId = req.params.id;
             const userId = req.user?.id;
             const game = await gameService.joinGame(gameId, userId);
             res.status(200).json((0, apiResponse_1.apiResponse)(true, 'Successfully joined the game', {
-                gameId: game._id,
-                currentPlayers: game.currentPlayers,
-                status: game.status
+                game: {
+                    id: game._id,
+                    title: game.title,
+                    status: game.status,
+                    currentPlayers: game.currentPlayers,
+                    maxPlayers: game.maxPlayers,
+                    availableSlots: game.maxPlayers - game.currentPlayers
+                }
             }));
         }
         catch (error) {
@@ -126,14 +146,31 @@ class GameController {
     }
     async leave(req, res, next) {
         try {
+            const gameService = (0, game_service_factory_1.getGameService)();
             const gameId = req.params.id;
             const userId = req.user?.id;
             const game = await gameService.leaveGame(gameId, userId);
             res.status(200).json((0, apiResponse_1.apiResponse)(true, 'Successfully left the game', {
-                gameId: game._id,
-                currentPlayers: game.currentPlayers,
-                status: game.status
+                game: {
+                    id: game._id,
+                    status: game.status,
+                    currentPlayers: game.currentPlayers,
+                    maxPlayers: game.maxPlayers,
+                    availableSlots: game.maxPlayers - game.currentPlayers
+                }
             }));
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async canJoin(req, res, next) {
+        try {
+            const gameService = (0, game_service_factory_1.getGameService)();
+            const gameId = req.params.id;
+            const userId = req.user?.id;
+            const eligibility = await gameService.checkJoinEligibility(gameId, userId);
+            res.status(200).json((0, apiResponse_1.apiResponse)(true, 'Join eligibility checked', eligibility));
         }
         catch (error) {
             next(error);

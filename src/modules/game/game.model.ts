@@ -23,10 +23,12 @@ export interface IGameDocument extends Document {
   imageUrl?: string;
   imagePublicId?: string;
   maxPlayers: number;
+  minPlayers: number;
   currentPlayers: number;
   status: GameStatus;
   creatorId: mongoose.Types.ObjectId;
   participants: IGameParticipantDocument[];
+  bannedUsers: mongoose.Types.ObjectId[];
   startTime: Date;
   endTime: Date;
   endedAt?: Date;
@@ -95,6 +97,18 @@ const gameSchema = new Schema<IGameDocument>(
       min: [1, 'Max players must be at least 1'],
       max: [1000, 'Max players cannot exceed 1000']
     },
+    minPlayers: {
+      type: Number,
+      default: 2,
+      min: [1, 'Min players must be at least 1'],
+      validate: {
+        validator: function(value: number) {
+          const doc = this as IGameDocument;
+          return value <= doc.maxPlayers;
+        },
+        message: 'Min players cannot exceed max players'
+      }
+    },
     currentPlayers: {
       type: Number,
       default: 0,
@@ -112,6 +126,11 @@ const gameSchema = new Schema<IGameDocument>(
     },
     participants: {
       type: [participantSchema],
+      default: []
+    },
+    bannedUsers: {
+      type: [Schema.Types.ObjectId],
+      ref: 'User',
       default: []
     },
     startTime: {

@@ -11,7 +11,8 @@ export enum GameCategory {
 export enum GameStatus {
   OPEN = 'OPEN',
   FULL = 'FULL',
-  ENDED = 'ENDED'
+  ENDED = 'ENDED',
+  CANCELLED = 'CANCELLED'
 }
 
 export enum ParticipantStatus {

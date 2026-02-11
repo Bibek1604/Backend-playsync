@@ -278,7 +278,7 @@ export class GameService {
    * Join a game with full validation and concurrency handling
    */
   async joinGame(gameId: string, userId: string): Promise<IGameDocument> {
-    // Pre-flight check (optional - for better error messages)
+    // Pre-flight check
     const eligibility = await this.gameRepository.canUserJoinGame(gameId, userId);
     
     if (!eligibility.canJoin) {

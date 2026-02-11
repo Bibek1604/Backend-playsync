@@ -13,7 +13,10 @@ export enum GameEvent {
   GAME_STATUS_CHANGED = 'game:status:changed',
   PLAYER_JOINED = 'game:player:joined',
   PLAYER_LEFT = 'game:player:left',
-  SLOTS_UPDATED = 'game:slots:updated'
+  SLOTS_UPDATED = 'game:slots:updated',
+  MEMBER_REMOVED = 'game:member:removed',
+  MEMBER_BANNED = 'game:member:banned',
+  OWNERSHIP_TRANSFERRED = 'game:ownership:transferred'
 }
 
 export interface IGameEventPlayer {
@@ -134,6 +137,78 @@ export class GameEventsEmitter {
     this.io.to('discovery').emit(GameEvent.GAME_UPDATED, {
       gameId,
       updates: updateData
+    });
+  }
+
+  /**
+   * Notify when member is removed/kicked from game
+   */
+  emitMemberRemoved(
+    gameId: string,
+    userId: string,
+    removedBy: string,
+    reason?: string
+  ): void {
+    this.io.to(`game:${gameId}`).emit(GameEvent.MEMBER_REMOVED, {
+      gameId,
+      userId,
+      removedBy,
+      reason,
+      timestamp: new Date()
+    });
+
+    // Notify the removed user directly
+    this.io.to(`user:${userId}`).emit(GameEvent.MEMBER_REMOVED, {
+      gameId,
+      reason,
+      message: 'You have been removed from the game'
+    });
+  }
+
+  /**
+   * Notify when member is banned from game
+   */
+  emitMemberBanned(
+    gameId: string,
+    userId: string,
+    bannedBy: string,
+    reason?: string
+  ): void {
+    this.io.to(`game:${gameId}`).emit(GameEvent.MEMBER_BANNED, {
+      gameId,
+      userId,
+      bannedBy,
+      reason,
+      timestamp: new Date()
+    });
+
+    // Notify the banned user directly
+    this.io.to(`user:${userId}`).emit(GameEvent.MEMBER_BANNED, {
+      gameId,
+      reason,
+      message: 'You have been banned from this game'
+    });
+  }
+
+  /**
+   * Notify when game ownership is transferred
+   */
+  emitOwnershipTransferred(
+    gameId: string,
+    fromUserId: string,
+    toUserId: string
+  ): void {
+    this.io.to(`game:${gameId}`).emit(GameEvent.OWNERSHIP_TRANSFERRED, {
+      gameId,
+      fromUserId,
+      toUserId,
+      timestamp: new Date()
+    });
+
+    // Notify the new owner
+    this.io.to(`user:${toUserId}`).emit(GameEvent.OWNERSHIP_TRANSFERRED, {
+      gameId,
+      message: 'You are now the owner of this game'
     });
   }
 }

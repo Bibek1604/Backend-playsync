@@ -9,7 +9,6 @@ const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_jsdoc_1 = __importDefault(require("swagger-jsdoc"));
 const path_1 = __importDefault(require("path"));
 const auth_routes_1 = __importDefault(require("./modules/auth/auth.routes"));
-const profile_routes_1 = __importDefault(require("./modules/profile/profile.routes"));
 const game_routes_1 = __importDefault(require("./modules/game/game.routes"));
 const logger_1 = __importDefault(require("./Share/utils/logger"));
 const app = (0, express_1.default)();
@@ -61,7 +60,6 @@ const swaggerSpec = (0, swagger_jsdoc_1.default)(swaggerOptions);
 const API_BASE = '/api/v1';
 app.use("/swagger", swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerSpec, { explorer: true }));
 app.use(`${API_BASE}/auth`, auth_routes_1.default);
-app.use(`${API_BASE}/profile`, profile_routes_1.default);
 app.use(`${API_BASE}/games`, game_routes_1.default);
 app.get("/", (_req, res) => {
     res.send('<h1>PlaySync API running  <a href="/swagger">Swagger Docs</a></h1>');

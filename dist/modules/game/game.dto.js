@@ -84,6 +84,34 @@ exports.getGamesQuerySchema = zod_1.z.object({
         status: zod_1.z.nativeEnum(game_types_1.GameStatus).optional(),
         creatorId: zod_1.z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid creator ID format').optional(),
         search: zod_1.z.string().max(100).optional(),
+        availableSlots: zod_1.z
+            .string()
+            .optional()
+            .transform((val) => val === 'true'),
+        minPlayers: zod_1.z
+            .string()
+            .optional()
+            .transform((val) => val ? parseInt(val, 10) : undefined)
+            .refine((val) => !val || val > 0, 'Min players must be greater than 0'),
+        maxPlayers: zod_1.z
+            .string()
+            .optional()
+            .transform((val) => val ? parseInt(val, 10) : undefined)
+            .refine((val) => !val || val > 0, 'Max players must be greater than 0'),
+        startTimeFrom: zod_1.z
+            .string()
+            .optional()
+            .transform((val) => val ? new Date(val) : undefined),
+        startTimeTo: zod_1.z
+            .string()
+            .optional()
+            .transform((val) => val ? new Date(val) : undefined),
+        includeEnded: zod_1.z
+            .string()
+            .optional()
+            .transform((val) => val === 'true'),
+        sortBy: zod_1.z.enum(['createdAt', 'startTime', 'endTime', 'popularity']).optional(),
+        sortOrder: zod_1.z.enum(['asc', 'desc']).optional(),
         page: zod_1.z
             .string()
             .optional()

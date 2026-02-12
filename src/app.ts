@@ -7,6 +7,10 @@ import path from "path";
 
 import authRoutes from "./modules/auth/auth.routes";
 import profileRoutes from "./modules/profile/profile.routes";
+import gameRoutes from "./modules/game/game.routes";
+import historyRoutes from "./modules/history/history.routes";
+import scorecardRoutes from "./modules/scorecard/scorecard.routes";
+import leaderboardRoutes from "./modules/leaderboard/leaderboard.routes";
 
 import logger from "./Share/utils/logger";
 const app = express();

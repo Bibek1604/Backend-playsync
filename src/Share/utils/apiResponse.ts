@@ -49,3 +49,28 @@ export function sendError(
 
   res.status(status).json(response);
 }
+
+/**
+ * Helper function to create standard API response
+ */
+export function apiResponse<T = any>(
+  success: boolean,
+  message: string,
+  data: T | null = null,
+  meta: any = null
+) {
+  const response: any = {
+    success,
+    message
+  };
+
+  if (data !== null) {
+    response.data = data;
+  }
+
+  if (meta !== null) {
+    response.meta = meta;
+  }
+
+  return response;
+}

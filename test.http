@@ -1,0 +1,195 @@
+### PlaySync API Testing
+### Use VS Code REST Client extension to test these endpoints
+
+@baseUrl = http://localhost:5000/api/v1
+@token = 
+@refreshToken = 
+@gameId = 
+@userId = 
+
+##########################################
+# AUTHENTICATION ENDPOINTS
+##########################################
+
+### 1. Register User
+POST {{baseUrl}}/auth/register/user
+Content-Type: application/json
+
+{
+  "fullName": "Test User",
+  "email": "testuser@example.com",
+  "password": "password123",
+  "confirmPassword": "password123"
+}
+
+### 2. Register Admin
+POST {{baseUrl}}/auth/register/admin
+Content-Type: application/json
+
+{
+  "fullName": "Admin User",
+  "email": "admin@example.com",
+  "password": "admin123",
+  "confirmPassword": "admin123",
+  "adminCode": "ADMIN_SECRET_CODE"
+}
+
+### 3. Login User
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "password123"
+}
+
+### 4. Refresh Token
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 5. Forgot Password
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com"
+}
+
+### 6. Reset Password
+POST {{baseUrl}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "otp": "123456",
+  "newPassword": "newpassword123",
+  "confirmPassword": "newpassword123"
+}
+
+### 7. Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{token}}
+
+### 8. Get All Users (Admin Only)
+GET {{baseUrl}}/auth/users
+Authorization: Bearer {{token}}
+
+##########################################
+# GAME ENDPOINTS
+##########################################
+
+### 9. Create Game
+# @name createGame
+POST {{baseUrl}}/games
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Friday Night Football",
+  "description": "Join us for a casual football match at Central Park. All skill levels welcome!",
+  "sport": "Football",
+  "location": "Central Park, New York, NY",
+  "maxParticipants": 10,
+  "date": "2026-02-20T18:00:00.000Z",
+  "skillLevel": "beginner"
+}
+
+### 10. Get All Games (Public)
+GET {{baseUrl}}/games
+
+### 11. Get All Games with Filters
+GET {{baseUrl}}/games?sport=Football&skillLevel=beginner&status=upcoming&page=1&limit=10
+
+### 12. Search Games
+GET {{baseUrl}}/games?search=football
+
+### 13. Get My Created Games
+GET {{baseUrl}}/games/my/created
+Authorization: Bearer {{token}}
+
+### 14. Get My Joined Games
+GET {{baseUrl}}/games/my/joined
+Authorization: Bearer {{token}}
+
+### 15. Get Game by ID
+GET {{baseUrl}}/games/{{gameId}}
+
+### 16. Get Game by ID (Authenticated)
+GET {{baseUrl}}/games/{{gameId}}
+Authorization: Bearer {{token}}
+
+### 17. Check if Can Join
+GET {{baseUrl}}/games/{{gameId}}/can-join
+Authorization: Bearer {{token}}
+
+### 18. Join Game
+POST {{baseUrl}}/games/{{gameId}}/join
+Authorization: Bearer {{token}}
+
+### 19. Leave Game
+POST {{baseUrl}}/games/{{gameId}}/leave
+Authorization: Bearer {{token}}
+
+### 20. Update Game
+PATCH {{baseUrl}}/games/{{gameId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Updated Friday Football",
+  "maxParticipants": 15,
+  "description": "Updated description for the game"
+}
+
+### 21. Delete Game
+DELETE {{baseUrl}}/games/{{gameId}}
+Authorization: Bearer {{token}}
+
+##########################################
+# CHAT ENDPOINTS
+##########################################
+
+### 22. Get Chat History (Default - Last 50 messages)
+GET {{baseUrl}}/games/{{gameId}}/chat
+Authorization: Bearer {{token}}
+
+### 23. Get Chat History with Limit
+GET {{baseUrl}}/games/{{gameId}}/chat?limit=20
+Authorization: Bearer {{token}}
+
+### 24. Get Chat History with Pagination (before cursor)
+GET {{baseUrl}}/games/{{gameId}}/chat?limit=20&before=MESSAGE_ID
+Authorization: Bearer {{token}}
+
+##########################################
+# UTILITY ENDPOINTS
+##########################################
+
+### 25. Health Check (Root)
+GET http://localhost:5000/
+
+### 26. Swagger Docs
+GET http://localhost:5000/swagger
+
+##########################################
+# NOTES
+##########################################
+# 
+# 1. After login (step 3), copy the accessToken from response and paste it in @token variable at the top
+# 2. After creating a game (step 9), copy the _id from response and paste it in @gameId variable at the top
+# 3. For file uploads (game images), use a tool like Postman or cURL
+# 4. WebSocket testing requires Socket.IO client (see API_TESTING_GUIDE.md)
+#
+# Quick Start:
+# 1. Register a user (step 1)
+# 2. Login (step 3) -> Save token
+# 3. Create a game (step 9) -> Save gameId
+# 4. Join the game (step 18)
+# 5. Test chat history (step 22)
+#
+##########################################

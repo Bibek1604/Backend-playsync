@@ -11,7 +11,8 @@ export enum GameCategory {
 export enum GameStatus {
   OPEN = 'OPEN',
   FULL = 'FULL',
-  ENDED = 'ENDED'
+  ENDED = 'ENDED',
+  CANCELLED = 'CANCELLED'
 }
 
 export enum ParticipantStatus {
@@ -74,6 +75,18 @@ export interface IGameFilters {
   search?: string;
 }
 
+// Enhanced filters for game discovery
+export interface IGameDiscoveryFilters extends IGameFilters {
+  availableSlots?: boolean;      // Games with available slots
+  minPlayers?: number;            // Minimum capacity filter
+  maxPlayers?: number;            // Maximum capacity filter
+  startTimeFrom?: Date;           // Filter by start time range
+  startTimeTo?: Date;
+  includeEnded?: boolean;         // Include ended games (default: false)
+  sortBy?: 'createdAt' | 'startTime' | 'endTime' | 'popularity';
+  sortOrder?: 'asc' | 'desc';
+}
+
 export interface IPaginationParams {
   page: number;
   limit: number;
@@ -86,10 +99,21 @@ export interface IPaginatedResponse<T> {
     limit: number;
     total: number;
     totalPages: number;
+    hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
   };
 }
 
 export interface IImageUploadResult {
   url: string;
   publicId: string;
+}
+
+// Join eligibility response
+export interface IJoinEligibility {
+  canJoin: boolean;
+  reasons: string[];
+  gameStatus?: GameStatus;
+  availableSlots?: number;
+  isParticipant?: boolean;
 }

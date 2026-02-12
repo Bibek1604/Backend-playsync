@@ -1,10 +1,15 @@
 import { UserRepository } from "./auth.repository";
-import { RegisterUserDTO, RegisterAdminDTO, LoginDTO, AuthResponseDTO } from "./auth.dto";
+import { RegisterUserDTO, RegisterAdminDTO, LoginDTO, AuthResponseDTO, ForgotPasswordDTO, ResetPasswordDTO } from "./auth.dto";
 import { signAccessToken, signRefreshToken } from "../../Share/config/jwt";
 import AppError from "../../Share/utils/AppError";
+import { sendPasswordResetOTP } from "../../Share/utils/emailService";
+import crypto from "crypto";
 
 const userRepository = new UserRepository();
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "your-super-secret-key-2025";
+
+// OTP expiry time in minutes
+const OTP_EXPIRY_MINUTES = 10;
 
 export class AuthService {
   static async refreshToken(refreshToken: string): Promise<AuthResponseDTO> {
@@ -126,5 +131,97 @@ export class AuthService {
       user.refreshTokens = [];
       await user.save();
     }
+  }
+
+  /**
+   * Generate a 6-digit OTP
+   */
+  private static generateOTP(): string {
+    return crypto.randomInt(100000, 999999).toString();
+  }
+
+  /**
+   * Forgot Password - Send OTP to user's email
+   */
+  static async forgotPassword(dto: ForgotPasswordDTO): Promise<void> {
+    // Find user by email
+    const user = await userRepository.findByEmail(dto.email);
+    
+    if (!user) {
+      // Don't reveal if email exists or not (security best practice)
+      throw new AppError("If this email is registered, you will receive a password reset OTP", 200);
+    }
+
+    // Generate 6-digit OTP
+    const otp = this.generateOTP();
+    
+    // Set OTP expiry time (10 minutes from now)
+    const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    // Save OTP and expiry in database
+    user.resetPasswordOTP = otp;
+    user.resetPasswordOTPExpires = otpExpiry;
+    await user.save({ validateBeforeSave: false });
+
+    // Send OTP email
+    const emailSent = await sendPasswordResetOTP(user.email, otp, user.fullName);
+
+    if (!emailSent) {
+      // Clear OTP if email fails
+      user.resetPasswordOTP = undefined;
+      user.resetPasswordOTPExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+      
+      throw new AppError("Failed to send reset email. Please try again later.", 500);
+    }
+  }
+
+  /**
+   * Reset Password using OTP
+   */
+  static async resetPassword(dto: ResetPasswordDTO): Promise<void> {
+    // Validate password match
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new AppError("Passwords do not match", 400);
+    }
+
+    // Find user with OTP fields selected
+    const user = await userRepository.findByEmail(dto.email);
+    
+    if (!user) {
+      throw new AppError("Invalid or expired OTP", 400);
+    }
+
+    // Manually select OTP fields (since they're excluded by default)
+    const userWithOTP = await userRepository.findByEmailWithOTP(dto.email);
+    
+    if (!userWithOTP) {
+      throw new AppError("Invalid or expired OTP", 400);
+    }
+
+    // Check if OTP exists and matches
+    if (!userWithOTP.resetPasswordOTP || userWithOTP.resetPasswordOTP !== dto.otp) {
+      throw new AppError("Invalid or expired OTP", 400);
+    }
+
+    // Check if OTP is expired
+    if (!userWithOTP.resetPasswordOTPExpires || userWithOTP.resetPasswordOTPExpires < new Date()) {
+      throw new AppError("OTP has expired. Please request a new one.", 400);
+    }
+
+    // Update password (will be hashed by pre-save hook)
+    userWithOTP.password = dto.newPassword;
+    
+    // Clear OTP fields
+    userWithOTP.resetPasswordOTP = undefined;
+    userWithOTP.resetPasswordOTPExpires = undefined;
+    
+    // Clear all refresh tokens (logout from all devices)
+    userWithOTP.refreshTokens = [];
+    
+    // Update password changed timestamp
+    userWithOTP.passwordChangedAt = new Date();
+    
+    await userWithOTP.save();
   }
 }

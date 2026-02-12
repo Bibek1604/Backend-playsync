@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { AuthController } from "./auth.controller";
 import validateDto from "../../Share/utils/validateDto";
-import { RegisterUserDTO, RegisterAdminDTO, LoginDTO } from "./auth.dto";
+import { RegisterUserDTO, RegisterAdminDTO, LoginDTO, ForgotPasswordDTO, ResetPasswordDTO } from "./auth.dto";
 import { z } from "zod";
 import { auth, authorize } from "./auth.middleware";
 
@@ -28,6 +28,21 @@ const loginSchema = z.object({
     email: z.string().email("Invalid email address"),
     password: z.string().min(6, "Password must be at least 6 characters long"),
 });
+
+const forgotPasswordSchema = z.object({
+    email: z.string().email("Invalid email address"),
+});
+
+const resetPasswordSchema = z.object({
+    email: z.string().email("Invalid email address"),
+    otp: z.string().length(6, "OTP must be exactly 6 digits").regex(/^\d+$/, "OTP must contain only numbers"),
+    newPassword: z.string().min(8, "New password must be at least 8 characters long"),
+    confirmPassword: z.string().min(8, "Confirm password must be at least 8 characters long"),
+}).refine(data => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+});
+
 const router = Router();
 
 router.post(
@@ -54,6 +69,18 @@ router.post(
     "/refresh-token",
     validateDto(refreshTokenSchema),
     AuthController.refreshToken
+);
+
+router.post(
+    "/forgot-password",
+    validateDto(forgotPasswordSchema),
+    AuthController.forgotPassword
+);
+
+router.post(
+    "/reset-password",
+    validateDto(resetPasswordSchema),
+    AuthController.resetPassword
 );
 
 router.post(

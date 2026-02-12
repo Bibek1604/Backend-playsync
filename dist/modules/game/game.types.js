@@ -11,6 +11,7 @@ var GameStatus;
     GameStatus["OPEN"] = "OPEN";
     GameStatus["FULL"] = "FULL";
     GameStatus["ENDED"] = "ENDED";
+    GameStatus["CANCELLED"] = "CANCELLED";
 })(GameStatus || (exports.GameStatus = GameStatus = {}));
 var ParticipantStatus;
 (function (ParticipantStatus) {

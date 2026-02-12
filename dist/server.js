@@ -42,6 +42,7 @@ const app_1 = __importDefault(require("./app"));
 const db_1 = __importDefault(require("./Share/config/db"));
 const logger_1 = __importDefault(require("./Share/utils/logger"));
 const game_cleanup_job_1 = __importDefault(require("./jobs/game.cleanup.job"));
+const socket_server_1 = require("./websocket/socket.server");
 dotenv_1.default.config();
 const PORT = process.env.PORT || 5000;
 (async () => {
@@ -49,10 +50,17 @@ const PORT = process.env.PORT || 5000;
         await (0, db_1.default)();
         const { seedAdmin } = await Promise.resolve().then(() => __importStar(require("./modules/auth/auth.seeder")));
         await seedAdmin();
-        game_cleanup_job_1.default.start();
         const server = http_1.default.createServer(app_1.default);
+        (0, socket_server_1.initializeSocketServer)(server);
+        logger_1.default.info('✅ WebSocket server initialized');
+        const { initializeGameService } = await Promise.resolve().then(() => __importStar(require('./modules/game/game.service.factory')));
+        const gameEventsEmitter = (0, socket_server_1.getGameEventsEmitter)();
+        initializeGameService(gameEventsEmitter);
+        logger_1.default.info('✅ Game service initialized with real-time events');
+        game_cleanup_job_1.default.start();
         server.listen(PORT, () => {
             logger_1.default.info(`Server running at http://localhost:${PORT}/swagger`);
+            logger_1.default.info(`WebSocket server ready for connections`);
         });
     }
     catch (err) {

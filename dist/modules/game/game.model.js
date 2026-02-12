@@ -88,6 +88,18 @@ const gameSchema = new mongoose_1.Schema({
         min: [1, 'Max players must be at least 1'],
         max: [1000, 'Max players cannot exceed 1000']
     },
+    minPlayers: {
+        type: Number,
+        default: 2,
+        min: [1, 'Min players must be at least 1'],
+        validate: {
+            validator: function (value) {
+                const doc = this;
+                return value <= doc.maxPlayers;
+            },
+            message: 'Min players cannot exceed max players'
+        }
+    },
     currentPlayers: {
         type: Number,
         default: 0,
@@ -105,6 +117,11 @@ const gameSchema = new mongoose_1.Schema({
     },
     participants: {
         type: [participantSchema],
+        default: []
+    },
+    bannedUsers: {
+        type: [mongoose_1.Schema.Types.ObjectId],
+        ref: 'User',
         default: []
     },
     startTime: {
@@ -141,14 +158,22 @@ gameSchema.index({ category: 1 });
 gameSchema.index({ endTime: 1, status: 1 });
 gameSchema.index({ 'participants.userId': 1 });
 gameSchema.index({ title: 'text', description: 'text' });
+gameSchema.index({ status: 1, currentPlayers: 1, maxPlayers: 1 });
+gameSchema.index({ startTime: 1, status: 1 });
+gameSchema.index({ category: 1, status: 1 });
+gameSchema.index({ createdAt: -1 });
 gameSchema.index({ status: 1, endTime: 1 }, {
     partialFilterExpression: { status: { $in: [game_types_1.GameStatus.OPEN, game_types_1.GameStatus.FULL] } }
 });
+gameSchema.index({ status: 1, category: 1, startTime: 1 }, { name: 'discovery_compound_idx' });
 gameSchema.virtual('creator', {
     ref: 'User',
     localField: 'creatorId',
     foreignField: '_id',
     justOne: true
+});
+gameSchema.virtual('availableSlots').get(function () {
+    return Math.max(0, this.maxPlayers - this.currentPlayers);
 });
 gameSchema.pre('save', async function () {
     const doc = this;

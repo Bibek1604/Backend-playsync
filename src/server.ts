@@ -5,6 +5,7 @@ import app from "./app";
 import connectDB from "./Share/config/db";
 import logger from "./Share/utils/logger";
 import gameCleanupJob from "./jobs/game.cleanup.job";
+import { initializeSocketServer, getGameEventsEmitter } from "./websocket/socket.server";
 
 
 
@@ -23,10 +24,19 @@ const PORT = process.env.PORT || 5000;
     const { seedAdmin } = await import("./modules/auth/auth.seeder");
     await seedAdmin();
 
+    const server = http.createServer(app);
+
+    // Initialize Socket.IO server
+    initializeSocketServer(server);
+    logger.info(' WebSocket server initialized');
+
+    // Initialize game service with socket emitter (for real-time events)
+    const { initializeGameService } = await import('./modules/game/game.service.factory');
+    const gameEventsEmitter = getGameEventsEmitter();
+    initializeGameService(gameEventsEmitter);
+
     // Start game cleanup cron job
     gameCleanupJob.start();
-
-    const server = http.createServer(app);
 
     server.listen(PORT, () => {
       logger.info(`Server running at http://localhost:${PORT}/swagger`);

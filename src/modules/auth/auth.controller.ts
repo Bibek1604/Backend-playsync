@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "./auth.service";
-import { RegisterAdminDTO, RegisterUserDTO, LoginDTO } from "./auth.dto";
+import { RegisterAdminDTO, RegisterUserDTO, LoginDTO, ForgotPasswordDTO, ResetPasswordDTO } from "./auth.dto";
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
 const REFRESH_COOKIE_OPTIONS = (req: Request) => ({
@@ -288,6 +288,140 @@ export class AuthController {
       res.status(200).json({
         success: true,
         message: "Logged out successfully",
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/auth/forgot-password:
+   *   post:
+   *     tags:
+   *       - Authentication
+   *     summary: Request password reset OTP
+   *     description: Send a 6-digit OTP to the user's registered email for password reset
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - email
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *                 example: user@example.com
+   *     responses:
+   *       200:
+   *         description: OTP sent successfully (generic message for security)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: If this email is registered, you will receive a password reset OTP
+   *       500:
+   *         description: Failed to send email
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   */
+  static async forgotPassword(
+    req: Request<{}, {}, ForgotPasswordDTO>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      await AuthService.forgotPassword(req.body);
+      res.status(200).json({
+        success: true,
+        message: "If this email is registered, you will receive a password reset OTP",
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/auth/reset-password:
+   *   post:
+   *     tags:
+   *       - Authentication
+   *     summary: Reset password using OTP
+   *     description: Reset user password by verifying the OTP sent to their email
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - email
+   *               - otp
+   *               - newPassword
+   *               - confirmPassword
+   *             properties:
+   *               email:
+   *                 type: string
+   *                 format: email
+   *                 example: user@example.com
+   *               otp:
+   *                 type: string
+   *                 example: "123456"
+   *                 minLength: 6
+   *                 maxLength: 6
+   *               newPassword:
+   *                 type: string
+   *                 format: password
+   *                 example: NewSecurePass123
+   *                 minLength: 8
+   *               confirmPassword:
+   *                 type: string
+   *                 format: password
+   *                 example: NewSecurePass123
+   *                 minLength: 8
+   *     responses:
+   *       200:
+   *         description: Password reset successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: Password reset successful. Please login with your new password.
+   *       400:
+   *         description: Invalid or expired OTP, or validation error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorResponse'
+   */
+  static async resetPassword(
+    req: Request<{}, {}, ResetPasswordDTO>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      await AuthService.resetPassword(req.body);
+      res.status(200).json({
+        success: true,
+        message: "Password reset successful. Please login with your new password.",
       });
     } catch (err) {
       next(err);

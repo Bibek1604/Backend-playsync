@@ -68,6 +68,14 @@ router.get(
   asyncHandler(controller.getById.bind(controller))
 );
 
+// Check if user can join game
+router.get(
+  '/:id/can-join',
+  auth,
+  validateDto(gameIdParamSchema),
+  asyncHandler(controller.canJoin.bind(controller))
+);
+
 // Join a game
 router.post(
   '/:id/join',

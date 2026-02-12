@@ -13,6 +13,10 @@ export interface IUser extends Document {
   failedLoginAttempts: number;
   lockUntil?: Date;
 
+  // PASSWORD RESET FIELDS
+  resetPasswordOTP?: string;
+  resetPasswordOTPExpires?: Date;
+
   // PROFILE FIELDS
   phone?: string;
   favoriteGame?: string;
@@ -67,6 +71,15 @@ const userSchema = new Schema<IUser>(
       select: false,
     },
     lockUntil: {
+      type: Date,
+      select: false,
+    },
+    // PASSWORD RESET FIELDS
+    resetPasswordOTP: {
+      type: String,
+      select: false,
+    },
+    resetPasswordOTPExpires: {
       type: Date,
       select: false,
     },

@@ -17,6 +17,18 @@ export interface LoginDTO{
     email: string;
     password: string;
 }
+
+export interface ForgotPasswordDTO {
+    email: string;
+}
+
+export interface ResetPasswordDTO {
+    email: string;
+    otp: string;
+    newPassword: string;
+    confirmPassword: string;
+}
+
 export interface AuthResponseDTO{
     accessToken: string;
     refreshToken: string;

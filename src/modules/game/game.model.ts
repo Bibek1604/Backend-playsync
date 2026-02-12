@@ -23,10 +23,12 @@ export interface IGameDocument extends Document {
   imageUrl?: string;
   imagePublicId?: string;
   maxPlayers: number;
+  minPlayers: number;
   currentPlayers: number;
   status: GameStatus;
   creatorId: mongoose.Types.ObjectId;
   participants: IGameParticipantDocument[];
+  bannedUsers: mongoose.Types.ObjectId[];
   startTime: Date;
   endTime: Date;
   endedAt?: Date;
@@ -95,6 +97,18 @@ const gameSchema = new Schema<IGameDocument>(
       min: [1, 'Max players must be at least 1'],
       max: [1000, 'Max players cannot exceed 1000']
     },
+    minPlayers: {
+      type: Number,
+      default: 2,
+      min: [1, 'Min players must be at least 1'],
+      validate: {
+        validator: function(value: number) {
+          const doc = this as IGameDocument;
+          return value <= doc.maxPlayers;
+        },
+        message: 'Min players cannot exceed max players'
+      }
+    },
     currentPlayers: {
       type: Number,
       default: 0,
@@ -112,6 +126,11 @@ const gameSchema = new Schema<IGameDocument>(
     },
     participants: {
       type: [participantSchema],
+      default: []
+    },
+    bannedUsers: {
+      type: [Schema.Types.ObjectId],
+      ref: 'User',
       default: []
     },
     startTime: {
@@ -153,10 +172,22 @@ gameSchema.index({ endTime: 1, status: 1 });
 gameSchema.index({ 'participants.userId': 1 });
 gameSchema.index({ title: 'text', description: 'text' }); // Text search
 
+// Additional indexes for discovery and join performance
+gameSchema.index({ status: 1, currentPlayers: 1, maxPlayers: 1 });
+gameSchema.index({ startTime: 1, status: 1 });
+gameSchema.index({ category: 1, status: 1 });
+gameSchema.index({ createdAt: -1 });
+
 // Compound index for active games query
 gameSchema.index({ status: 1, endTime: 1 }, { 
   partialFilterExpression: { status: { $in: [GameStatus.OPEN, GameStatus.FULL] } } 
 });
+
+// Compound index for common discovery queries
+gameSchema.index(
+  { status: 1, category: 1, startTime: 1 },
+  { name: 'discovery_compound_idx' }
+);
 
 // Virtual for creator population
 gameSchema.virtual('creator', {
@@ -164,6 +195,11 @@ gameSchema.virtual('creator', {
   localField: 'creatorId',
   foreignField: '_id',
   justOne: true
+});
+
+// Virtual for available slots calculation
+gameSchema.virtual('availableSlots').get(function(this: IGameDocument) {
+  return Math.max(0, this.maxPlayers - this.currentPlayers);
 });
 
 // Pre-save middleware to validate

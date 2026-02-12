@@ -9,8 +9,9 @@ const AppError_1 = __importDefault(require("../../Share/utils/AppError"));
 const game_uploader_1 = require("./game.uploader");
 const game_types_1 = require("./game.types");
 class GameService {
-    constructor() {
+    constructor(socketEmitter) {
         this.gameRepository = new game_repository_1.GameRepository();
+        this.socketEmitter = socketEmitter;
     }
     async createGame(creatorId, data, imageFile) {
         let imageUrl;
@@ -36,6 +37,16 @@ class GameService {
         };
         try {
             const game = await this.gameRepository.create(gameData);
+            if (this.socketEmitter) {
+                this.socketEmitter.emitGameCreated(game._id.toString(), {
+                    id: game._id,
+                    title: game.title,
+                    category: game.category,
+                    status: game.status,
+                    maxPlayers: game.maxPlayers,
+                    currentPlayers: game.currentPlayers
+                });
+            }
             return game;
         }
         catch (error) {
@@ -55,14 +66,16 @@ class GameService {
         return game;
     }
     async getAllGames(filters, pagination) {
-        const { games, total } = await this.gameRepository.findAll(filters, pagination);
+        const { games, total } = await this.gameRepository.findAllWithAdvancedFilters(filters, pagination);
         return {
             games,
             pagination: {
                 page: pagination.page,
                 limit: pagination.limit,
                 total,
-                totalPages: Math.ceil(total / pagination.limit)
+                totalPages: Math.ceil(total / pagination.limit),
+                hasNextPage: pagination.page < Math.ceil(total / pagination.limit),
+                hasPreviousPage: pagination.page > 1
             }
         };
     }
@@ -148,29 +161,34 @@ class GameService {
         if (!deleted) {
             throw new AppError_1.default('Failed to delete game', 500);
         }
+        if (this.socketEmitter) {
+            this.socketEmitter.emitGameDeleted(gameId);
+        }
+    }
+    async checkJoinEligibility(gameId, userId) {
+        const result = await this.gameRepository.canUserJoinGame(gameId, userId);
+        return {
+            canJoin: result.canJoin,
+            reasons: result.reasons,
+            gameStatus: result.game?.status,
+            availableSlots: result.game ? result.game.maxPlayers - result.game.currentPlayers : 0,
+            isParticipant: result.reasons.includes('Already joined this game')
+        };
     }
     async joinGame(gameId, userId) {
-        const game = await this.gameRepository.findById(gameId);
-        if (!game) {
-            throw new AppError_1.default('Game not found', 404);
-        }
-        if (game.status === game_types_1.GameStatus.ENDED) {
-            throw new AppError_1.default('Cannot join ended game', 400);
-        }
-        if (game.status === game_types_1.GameStatus.FULL) {
-            throw new AppError_1.default('Game is full', 400);
-        }
-        const isParticipant = await this.gameRepository.isUserParticipant(gameId, userId);
-        if (isParticipant) {
-            throw new AppError_1.default('You have already joined this game', 400);
+        const eligibility = await this.gameRepository.canUserJoinGame(gameId, userId);
+        if (!eligibility.canJoin) {
+            throw new AppError_1.default(eligibility.reasons[0], 400);
         }
         const updatedGame = await this.gameRepository.addParticipant(gameId, userId);
         if (!updatedGame) {
-            throw new AppError_1.default('Failed to join game. Game might be full or ended.', 400);
+            throw new AppError_1.default('Failed to join game. Game may be full or you may have already joined.', 409);
         }
-        if (updatedGame.currentPlayers >= updatedGame.maxPlayers) {
-            updatedGame.status = game_types_1.GameStatus.FULL;
-            await updatedGame.save();
+        if (this.socketEmitter) {
+            this.socketEmitter.emitPlayerJoined(gameId, { id: userId, username: 'User' }, updatedGame.currentPlayers, updatedGame.maxPlayers - updatedGame.currentPlayers);
+            if (updatedGame.status === game_types_1.GameStatus.FULL) {
+                this.socketEmitter.emitGameStatusChange(gameId, game_types_1.GameStatus.FULL, 0);
+            }
         }
         return updatedGame;
     }
@@ -189,6 +207,12 @@ class GameService {
         const updatedGame = await this.gameRepository.removeParticipant(gameId, userId);
         if (!updatedGame) {
             throw new AppError_1.default('Failed to leave game', 500);
+        }
+        if (this.socketEmitter) {
+            this.socketEmitter.emitPlayerLeft(gameId, userId, updatedGame.currentPlayers, updatedGame.maxPlayers - updatedGame.currentPlayers);
+            if (updatedGame.status === game_types_1.GameStatus.OPEN && game.status === game_types_1.GameStatus.FULL) {
+                this.socketEmitter.emitGameStatusChange(gameId, game_types_1.GameStatus.OPEN, updatedGame.maxPlayers - updatedGame.currentPlayers);
+            }
         }
         return updatedGame;
     }

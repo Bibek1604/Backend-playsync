@@ -92,13 +92,41 @@ export const updateGameSchema = z.object({
   })
 }).passthrough(); // Allow other fields like file uploads
 
-// Query Parameters for Get All Games
+// Query Parameters for Get All Games (Enhanced Discovery)
 export const getGamesQuerySchema = z.object({
   query: z.object({
     category: z.nativeEnum(GameCategory).optional(),
     status: z.nativeEnum(GameStatus).optional(),
     creatorId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid creator ID format').optional(),
     search: z.string().max(100).optional(),
+    availableSlots: z
+      .string()
+      .optional()
+      .transform((val) => val === 'true'),
+    minPlayers: z
+      .string()
+      .optional()
+      .transform((val) => val ? parseInt(val, 10) : undefined)
+      .refine((val) => !val || val > 0, 'Min players must be greater than 0'),
+    maxPlayers: z
+      .string()
+      .optional()
+      .transform((val) => val ? parseInt(val, 10) : undefined)
+      .refine((val) => !val || val > 0, 'Max players must be greater than 0'),
+    startTimeFrom: z
+      .string()
+      .optional()
+      .transform((val) => val ? new Date(val) : undefined),
+    startTimeTo: z
+      .string()
+      .optional()
+      .transform((val) => val ? new Date(val) : undefined),
+    includeEnded: z
+      .string()
+      .optional()
+      .transform((val) => val === 'true'),
+    sortBy: z.enum(['createdAt', 'startTime', 'endTime', 'popularity']).optional(),
+    sortOrder: z.enum(['asc', 'desc']).optional(),
     page: z
       .string()
       .optional()

@@ -13,16 +13,20 @@ import { GameEventsEmitter } from '../../websocket/game.events';
 import { getSocketServer } from '../../websocket/socket.server';
 import { emitSystemMessage } from '../chat/chat.socket';
 import { ChatService } from '../chat/chat.service';
+import { NotificationService } from '../notification/notification.service';
+import { User } from '../auth/auth.model';
 
 export class GameService {
   private gameRepository: GameRepository;
   private socketEmitter?: GameEventsEmitter;
   private chatService: ChatService;
+  private notificationService: NotificationService;
 
   constructor(socketEmitter?: GameEventsEmitter) {
     this.gameRepository = new GameRepository();
     this.socketEmitter = socketEmitter;
     this.chatService = new ChatService();
+    this.notificationService = new NotificationService();
   }
 
   /**
@@ -298,6 +302,10 @@ export class GameService {
       throw new AppError(eligibility.reasons[0], 400);
     }
 
+    // Get user data for notifications
+    const joinerUser = await User.findById(userId).select('fullName').lean();
+    const joinerUsername = joinerUser?.fullName || 'A player';
+
     // Atomic join operation
     const updatedGame = await this.gameRepository.addParticipant(gameId, userId);
 
@@ -309,28 +317,57 @@ export class GameService {
       );
     }
 
+    const creatorId = updatedGame.creatorId._id 
+      ? updatedGame.creatorId._id.toString() 
+      : updatedGame.creatorId.toString();
+
+    // Send notification to game creator (only if joiner is not the creator)
+    if (creatorId !== userId) {
+      try {
+        await this.notificationService.notifyGameJoin(
+          creatorId,
+          joinerUsername,
+          gameId,
+          updatedGame.title
+        );
+      } catch (error) {
+        console.error('Failed to send join notification:', error);
+      }
+    }
+
     // Emit real-time event
     if (this.socketEmitter) {
       this.socketEmitter.emitPlayerJoined(
         gameId,
-        { id: userId, username: 'User' },  // TODO: Get from user service
+        { id: userId, username: joinerUsername },
         updatedGame.currentPlayers,
         updatedGame.maxPlayers - updatedGame.currentPlayers
       );
 
-      // If game became full, emit status change
+      // If game became full, emit status change and notify creator
       if (updatedGame.status === GameStatus.FULL) {
         this.socketEmitter.emitGameStatusChange(
           gameId,
           GameStatus.FULL,
           0
         );
+
+        // Notify creator that game is full
+        try {
+          await this.notificationService.notifyGameFull(
+            creatorId,
+            gameId,
+            updatedGame.title
+          );
+        } catch (error) {
+          console.error('Failed to send game full notification:', error);
+        }
       }
 
       // Emit system chat message about player joining
       try {
         const io = getSocketServer();
-        await emitSystemMessage(io, gameId, `A player joined the game`);
+        await emitSystemMessage(io, gameId, `${joinerUsername} joined the game`);
       } catch (error) {
         console.error('Failed to emit join system message:', error);
       }

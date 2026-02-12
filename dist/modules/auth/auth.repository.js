@@ -25,6 +25,9 @@ class UserRepository {
     async findByEmailOrRefreshToken(refreshToken) {
         return await auth_model_1.User.findOne({ refreshToken });
     }
+    async findAll(filter = {}) {
+        return await auth_model_1.User.find(filter).select("-password -refreshTokens");
+    }
 }
 exports.UserRepository = UserRepository;
 //# sourceMappingURL=auth.repository.js.map

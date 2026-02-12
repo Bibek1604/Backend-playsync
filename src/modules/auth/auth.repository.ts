@@ -4,6 +4,7 @@ export interface IUserRepository {
   create(userData: Partial<IUser>): Promise<IUser>;
   findByEmail(email: string): Promise<IUser | null>;
   findByEmailWithPassword(email: string): Promise<IUser | null>;
+  findByEmailWithOTP(email: string): Promise<IUser | null>;
   findById(id: string): Promise<IUser | null>;
   findByIdWithPassword(id: string): Promise<IUser | null>;
   updateById(id: string, updateData: Partial<IUser>): Promise<IUser | null>;
@@ -21,6 +22,10 @@ export class UserRepository implements IUserRepository {
 
   async findByEmailWithPassword(email: string): Promise<IUser | null> {
     return await User.findOne({ email }).select("+password");
+  }
+
+  async findByEmailWithOTP(email: string): Promise<IUser | null> {
+    return await User.findOne({ email }).select("+password +resetPasswordOTP +resetPasswordOTPExpires +refreshTokens");
   }
 
   async findById(id: string): Promise<IUser | null> {

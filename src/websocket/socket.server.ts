@@ -6,6 +6,7 @@
 import { Server as HttpServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import { GameEventsEmitter } from './game.events';
+import { initializeChatHandlers } from '../modules/chat/chat.socket';
 
 let io: SocketServer;
 let gameEventsEmitter: GameEventsEmitter;
@@ -24,6 +25,9 @@ export const initializeSocketServer = (httpServer: HttpServer): SocketServer => 
 
   // Initialize game events emitter
   gameEventsEmitter = new GameEventsEmitter(io);
+
+  // Initialize chat handlers
+  initializeChatHandlers(io);
 
   // Socket connection handling
   io.on('connection', (socket) => {

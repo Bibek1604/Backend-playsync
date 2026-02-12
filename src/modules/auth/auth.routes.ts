@@ -1,8 +1,9 @@
-import {Router} from "express";
+import { Router } from "express";
 import { AuthController } from "./auth.controller";
 import validateDto from "../../Share/utils/validateDto";
 import { RegisterUserDTO, RegisterAdminDTO, LoginDTO } from "./auth.dto";
 import { z } from "zod";
+import { auth, authorize } from "./auth.middleware";
 
 const registerUserSchema = z.object({
     fullName: z.string().min(2, "Full name must be at least 2 characters long"),
@@ -12,7 +13,7 @@ const registerUserSchema = z.object({
 }).refine(data => data.password === data.confirmPassword, {
     message: "Passwords do not match",
     path: ["confirmPassword"],
-}); 
+});
 const registerAdminSchema = z.object({
     fullName: z.string().min(2, "Full name must be at least 2 characters long"),
     email: z.string().email("Invalid email address"),
@@ -29,30 +30,43 @@ const loginSchema = z.object({
 });
 const router = Router();
 
-    router.post(
-        "/register/user",
-        validateDto(registerUserSchema),
-        AuthController.registerUser
-    );
-    router.post(
-        "/register/admin",
-        validateDto(registerAdminSchema),
-        AuthController.registerAdmin
-    );
-    router.post(
-        "/login",
-        validateDto(loginSchema),
-        AuthController.login
-    );
+router.post(
+    "/register/user",
+    validateDto(registerUserSchema),
+    AuthController.registerUser
+);
+router.post(
+    "/register/admin",
+    validateDto(registerAdminSchema),
+    AuthController.registerAdmin
+);
+router.post(
+    "/login",
+    validateDto(loginSchema),
+    AuthController.login
+);
 
-    const refreshTokenSchema = z.object({
+const refreshTokenSchema = z.object({
     refreshToken: z.string().min(1, "Refresh token is required"),
-    });
+});
 
-    router.post(
-        "/refresh-token",
-        validateDto(refreshTokenSchema),
-        AuthController.refreshToken
-    );
+router.post(
+    "/refresh-token",
+    validateDto(refreshTokenSchema),
+    AuthController.refreshToken
+);
 
-    export default router;
+router.post(
+    "/logout",
+    auth,
+    AuthController.logout
+);
+
+router.get(
+    "/users",
+    auth,
+    authorize("admin"),
+    AuthController.getAllUsers
+);
+
+export default router;

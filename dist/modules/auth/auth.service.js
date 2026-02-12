@@ -78,13 +78,9 @@ class AuthService {
             ...dto,
             role: "user",
         });
-        const accessToken = (0, jwt_1.signAccessToken)({ id: user._id.toString(), role: user.role });
-        const refreshToken = (0, jwt_1.signRefreshToken)({ id: user._id.toString(), role: user.role });
-        user.refreshTokens = [refreshToken];
-        await user.save();
         return {
-            accessToken,
-            refreshToken,
+            accessToken: "",
+            refreshToken: "",
             user: {
                 id: user._id.toString(),
                 fullName: user.fullName,
@@ -141,6 +137,16 @@ class AuthService {
                 role: user.role,
             },
         };
+    }
+    static async getAllUsers() {
+        return await userRepository.findAll({ role: "user" });
+    }
+    static async logout(userId) {
+        const user = await userRepository.findById(userId);
+        if (user) {
+            user.refreshTokens = [];
+            await user.save();
+        }
     }
 }
 exports.AuthService = AuthService;

@@ -85,6 +85,25 @@ const userSchema = new mongoose_1.Schema({
         type: Date,
         select: false,
     },
+    phone: {
+        type: String,
+        trim: true,
+        default: "",
+    },
+    favoriteGame: {
+        type: String,
+        trim: true,
+        default: "",
+    },
+    place: {
+        type: String,
+        trim: true,
+        default: "",
+    },
+    profilePicture: {
+        type: String,
+        default: "",
+    },
 }, {
     timestamps: true,
 });

@@ -4,7 +4,8 @@ import { ZodSchema, ZodError } from 'zod';
 export const validateDto = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      schema.parse(req.body);
+      // Validate the entire request object to support body, query, and params validation
+      schema.parse(req);
       next();
     } catch (error) {
       if (error instanceof ZodError) {

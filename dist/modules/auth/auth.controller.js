@@ -13,13 +13,10 @@ class AuthController {
     static async registerUser(req, res, next) {
         try {
             const authResponse = await auth_service_1.AuthService.registerUser(req.body);
-            res.cookie(REFRESH_COOKIE_NAME, authResponse.refreshToken, REFRESH_COOKIE_OPTIONS(req));
             res.status(201).json({
                 success: true,
                 message: "User registered successfully",
                 data: {
-                    accessToken: authResponse.accessToken,
-                    refreshToken: authResponse.refreshToken,
                     user: authResponse.user,
                 },
             });
@@ -65,6 +62,33 @@ class AuthController {
                 success: true,
                 message: "Token refreshed successfully",
                 data: authResponse,
+            });
+        }
+        catch (err) {
+            next(err);
+        }
+    }
+    static async getAllUsers(_req, res, next) {
+        try {
+            const users = await auth_service_1.AuthService.getAllUsers();
+            res.status(200).json({
+                success: true,
+                message: "Users retrieved successfully",
+                data: users,
+            });
+        }
+        catch (err) {
+            next(err);
+        }
+    }
+    static async logout(req, res, next) {
+        try {
+            if (req.user && req.user.id) {
+                await auth_service_1.AuthService.logout(req.user.id);
+            }
+            res.status(200).json({
+                success: true,
+                message: "Logged out successfully",
             });
         }
         catch (err) {

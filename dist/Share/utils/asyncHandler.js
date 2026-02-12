@@ -1,8 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_async_handler_1 = __importDefault(require("express-async-handler"));
-exports.default = express_async_handler_1.default;
+exports.asyncHandler = void 0;
+const asyncHandler = (fn) => (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+};
+exports.asyncHandler = asyncHandler;
+exports.default = exports.asyncHandler;
 //# sourceMappingURL=asyncHandler.js.map

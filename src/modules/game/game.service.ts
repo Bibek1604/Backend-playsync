@@ -10,14 +10,19 @@ import AppError from '../../Share/utils/AppError';
 import { uploadToCloudinary, deleteFromCloudinary } from './game.uploader';
 import { GameStatus, IGameFilters, IPaginationParams, IGameDiscoveryFilters, IJoinEligibility } from './game.types';
 import { GameEventsEmitter } from '../../websocket/game.events';
+import { getSocketServer } from '../../websocket/socket.server';
+import { emitSystemMessage } from '../chat/chat.socket';
+import { ChatService } from '../chat/chat.service';
 
 export class GameService {
   private gameRepository: GameRepository;
   private socketEmitter?: GameEventsEmitter;
+  private chatService: ChatService;
 
   constructor(socketEmitter?: GameEventsEmitter) {
     this.gameRepository = new GameRepository();
     this.socketEmitter = socketEmitter;
+    this.chatService = new ChatService();
   }
 
   /**
@@ -245,6 +250,14 @@ export class GameService {
     // Delete image from Cloudinary
     if (game.imagePublicId) {
       await deleteFromCloudinary(game.imagePublicId);
+    // Delete all chat messages for this game
+    try {
+      await this.chatService.deleteGameChat(gameId);
+    } catch (error) {
+      console.error('Failed to delete game chat messages:', error);
+      // Continue with game deletion even if chat cleanup fails
+    }
+
     }
 
     const deleted = await this.gameRepository.delete(gameId);
@@ -313,6 +326,14 @@ export class GameService {
           0
         );
       }
+
+      // Emit system chat message about player joining
+      try {
+        const io = getSocketServer();
+        await emitSystemMessage(io, gameId, `A player joined the game`);
+      } catch (error) {
+        console.error('Failed to emit join system message:', error);
+      }
     }
 
     return updatedGame;
@@ -361,6 +382,14 @@ export class GameService {
           GameStatus.OPEN,
           updatedGame.maxPlayers - updatedGame.currentPlayers
         );
+      }
+
+      // Emit system chat message about player leaving
+      try {
+        const io = getSocketServer();
+        await emitSystemMessage(io, gameId, `A player left the game`);
+      } catch (error) {
+        console.error('Failed to emit leave system message:', error);
       }
     }
 

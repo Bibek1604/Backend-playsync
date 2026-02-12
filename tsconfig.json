@@ -14,7 +14,7 @@
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "noImplicitAny": true,
     "removeComments": true
   },

@@ -28,20 +28,18 @@ const PORT = process.env.PORT || 5000;
 
     // Initialize Socket.IO server
     initializeSocketServer(server);
-    logger.info('✅ WebSocket server initialized');
+    logger.info(' WebSocket server initialized');
 
     // Initialize game service with socket emitter (for real-time events)
     const { initializeGameService } = await import('./modules/game/game.service.factory');
     const gameEventsEmitter = getGameEventsEmitter();
     initializeGameService(gameEventsEmitter);
-    logger.info('✅ Game service initialized with real-time events');
 
     // Start game cleanup cron job
     gameCleanupJob.start();
 
     server.listen(PORT, () => {
       logger.info(`Server running at http://localhost:${PORT}/swagger`);
-      logger.info(`WebSocket server ready for connections`);
     });
 
   } catch (err) {

@@ -7,6 +7,9 @@ import path from "path";
 import authRoutes from "./modules/auth/auth.routes";
 import gameRoutes from "./modules/game/game.routes";
 import chatRoutes from "./modules/chat/chat.routes";
+import historyRoutes from "./modules/history/history.routes";
+import scorecardRoutes from "./modules/scorecard/scorecard.routes";
+import leaderboardRoutes from "./modules/leaderboard/leaderboard.routes";
 
 import logger from "./Share/utils/logger";
 const app = express();
@@ -76,6 +79,9 @@ app.use(
 app.use(`${API_BASE}/auth`, authRoutes);
 app.use(`${API_BASE}/games`, gameRoutes);
 app.use(`${API_BASE}/games/:gameId/chat`, chatRoutes);
+app.use(`${API_BASE}/history`, historyRoutes);
+app.use(`${API_BASE}/scorecard`, scorecardRoutes);
+app.use(`${API_BASE}/leaderboard`, leaderboardRoutes);
 
 app.get("/", (_req, res) => {
   res.send(

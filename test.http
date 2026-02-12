@@ -167,13 +167,68 @@ GET {{baseUrl}}/games/{{gameId}}/chat?limit=20&before=MESSAGE_ID
 Authorization: Bearer {{token}}
 
 ##########################################
+# HISTORY MODULE ENDPOINTS
+##########################################
+
+### 25. Get My Game History (All Games)
+GET {{baseUrl}}/history
+Authorization: Bearer {{token}}
+
+### 26. Get My Game History with Filters
+GET {{baseUrl}}/history?category=ONLINE&status=ENDED&page=1&limit=10&sort=recent
+Authorization: Bearer {{token}}
+
+### 27. Get My Game History - Active Games Only
+GET {{baseUrl}}/history?status=ACTIVE
+Authorization: Bearer {{token}}
+
+### 28. Get My Game History - Games I Left
+GET {{baseUrl}}/history?status=LEFT
+Authorization: Bearer {{token}}
+
+### 29. Get My Game History - Offline Games
+GET {{baseUrl}}/history?category=OFFLINE&sort=oldest
+Authorization: Bearer {{token}}
+
+### 30. Get My Participation Statistics
+GET {{baseUrl}}/history/stats
+Authorization: Bearer {{token}}
+
+### 31. Get My Total Game Count
+GET {{baseUrl}}/history/count
+Authorization: Bearer {{token}}
+
+##########################################
+# SCORECARD MODULE ENDPOINTS
+##########################################
+
+### 32. Get My Personal Scorecard
+GET {{baseUrl}}/scorecard
+Authorization: Bearer {{token}}
+
+### 33. Get Global Leaderboard (Top 50)
+GET {{baseUrl}}/leaderboard
+
+### 34. Get Leaderboard - Page 2 with 20 per page
+GET {{baseUrl}}/leaderboard?page=2&limit=20
+
+### 35. Get Leaderboard - Top 100
+GET {{baseUrl}}/leaderboard?limit=100
+
+### 36. Get Monthly Leaderboard
+GET {{baseUrl}}/leaderboard?period=monthly
+
+### 37. Get Leaderboard Statistics
+GET {{baseUrl}}/leaderboard/stats
+
+##########################################
 # UTILITY ENDPOINTS
 ##########################################
 
-### 25. Health Check (Root)
+### 38. Health Check (Root)
 GET http://localhost:5000/
 
-### 26. Swagger Docs
+### 39. Swagger Docs
 GET http://localhost:5000/swagger
 
 ##########################################

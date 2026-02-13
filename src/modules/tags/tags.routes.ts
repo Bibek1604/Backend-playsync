@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import { TagsController } from './tags.controller';
-import { asyncHandler } from '../../../Share/utils/asyncHandler';
+import { asyncHandler } from '../../Share/utils/asyncHandler';
 
 const router = Router();
 const controller = new TagsController();

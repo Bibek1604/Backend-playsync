@@ -177,16 +177,23 @@ export class GameRepository implements IGameRepository {
   /**
    * Atomic join operation with race condition prevention (FIXED)
    */
+  /**
+   * Add participant to game atomically
+   * SECURITY: Prevents race conditions with atomic findOneAndUpdate
+   * - Checks all conditions atomically (status, slots, duplicates)
+   * - Updates status to FULL atomically when capacity reached
+   */
   async addParticipant(gameId: string, userId: string): Promise<IGameDocument | null> {
     if (!mongoose.Types.ObjectId.isValid(gameId) || !mongoose.Types.ObjectId.isValid(userId)) {
       return null;
     }
 
+    // ATOMIC OPERATION 1: Add participant and increment counter
     const game = await Game.findOneAndUpdate(
       {
         _id: gameId,
         status: { $nin: [GameStatus.ENDED, GameStatus.FULL] },  // Not ended or full
-        $expr: { $lt: ['$currentPlayers', '$maxPlayers'] },     // Has available slots (FIXED)
+        $expr: { $lt: ['$currentPlayers', '$maxPlayers'] },     // Has available slots
         'participants': {
           $not: {
             $elemMatch: {
@@ -213,43 +220,94 @@ export class GameRepository implements IGameRepository {
       }
     );
 
-    // Auto-update status to FULL if capacity reached
-    if (game && game.currentPlayers >= game.maxPlayers) {
-      game.status = GameStatus.FULL;
-      await game.save();
+    if (!game) {
+      return null;
+    }
+
+    // ATOMIC OPERATION 2: Update status to FULL if capacity reached
+    // This prevents race condition where multiple joins could bypass FULL check
+    if (game.currentPlayers >= game.maxPlayers) {
+      const updatedGame = await Game.findOneAndUpdate(
+        {
+          _id: gameId,
+          status: { $ne: GameStatus.ENDED },  // Don't update if already ended
+          currentPlayers: { $gte: game.maxPlayers }  // Verify still at capacity
+        },
+        {
+          $set: { status: GameStatus.FULL }
+        },
+        { 
+          new: true,
+          populate: { path: 'creatorId', select: 'fullName email profilePicture' }
+        }
+      );
+      
+      return updatedGame || game;  // Return updated or original
     }
 
     return game;
   }
 
+  /**
+   * Remove participant from game atomically
+   * SECURITY: Prevents race conditions with atomic updates
+   * - Updates participant status atomically
+   * - Decrements counter atomically
+   * - Updates game status from FULL to OPEN if needed
+   */
   async removeParticipant(gameId: string, userId: string): Promise<IGameDocument | null> {
     if (!mongoose.Types.ObjectId.isValid(gameId) || !mongoose.Types.ObjectId.isValid(userId)) {
       return null;
     }
 
-    const game = await Game.findById(gameId);
-    if (!game) return null;
-
-    // Find the participant
-    const participant = game.participants.find(
-      p => p.userId.toString() === userId && p.status === 'ACTIVE'
+    // ATOMIC OPERATION 1: Mark participant as LEFT and decrement counter
+    const game = await Game.findOneAndUpdate(
+      {
+        _id: gameId,
+        'participants': {
+          $elemMatch: {
+            userId: new mongoose.Types.ObjectId(userId),
+            status: 'ACTIVE'
+          }
+        }
+      },
+      {
+        $set: {
+          'participants.$.status': 'LEFT',
+          'participants.$.leftAt': new Date()
+        },
+        $inc: { currentPlayers: -1 }
+      },
+      { 
+        new: true,
+        populate: { path: 'creatorId', select: 'fullName email profilePicture' }
+      }
     );
 
-    if (!participant) return null;
-
-    // Update participant status to LEFT
-    participant.status = 'LEFT' as any;
-    participant.leftAt = new Date();
-
-    // Decrement current players
-    game.currentPlayers = Math.max(0, game.currentPlayers - 1);
-
-    // Update status if needed
-    if (game.status === GameStatus.FULL && game.currentPlayers < game.maxPlayers) {
-      game.status = GameStatus.OPEN;
+    if (!game) {
+      return null;
     }
 
-    await game.save();
+    // ATOMIC OPERATION 2: Update status from FULL to OPEN if slot freed up
+    if (game.status === GameStatus.FULL && game.currentPlayers < game.maxPlayers) {
+      const updatedGame = await Game.findOneAndUpdate(
+        {
+          _id: gameId,
+          status: GameStatus.FULL,
+          currentPlayers: { $lt: game.maxPlayers }
+        },
+        {
+          $set: { status: GameStatus.OPEN }
+        },
+        { 
+          new: true,
+          populate: { path: 'creatorId', select: 'fullName email profilePicture' }
+        }
+      );
+      
+      return updatedGame || game;  // Return updated or original
+    }
+
     return game;
   }
 

@@ -3,13 +3,13 @@
  * Business logic for manual game completion
  */
 
-import { GameRepository } from '../game.repository';
-import { NotificationService } from '../../notification/notification.service';
-import { NotificationType } from '../../notification/notification.types';
-import { IGameDocument } from '../game.model';
-import { GameStatus, ParticipantStatus } from '../game.types';
-import { getSocketServer } from '../../../websocket/socket.server';
-import AppError from '../../../Share/utils/AppError';
+import { GameRepository } from '../game/game.repository';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationType } from '../notification/notification.types';
+import { IGameDocument } from '../game/game.model';
+import { GameStatus, ParticipantStatus } from '../game/game.types';
+import { getSocketServer } from '../../websocket/socket.server';
+import AppError from '../../Share/utils/AppError';
 
 export class CompleteGameService {
   private gameRepository: GameRepository;

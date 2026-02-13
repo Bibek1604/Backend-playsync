@@ -3,7 +3,7 @@
  * Business logic for game tags operations
  */
 
-import Game from '../game.model';
+import Game from '../game/game.model';
 
 export interface IPopularTag {
   tag: string;

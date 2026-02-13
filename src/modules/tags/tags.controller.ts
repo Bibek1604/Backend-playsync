@@ -5,7 +5,7 @@
 
 import { Request, Response } from 'express';
 import { TagsService } from './tags.service';
-import { apiResponse } from '../../../Share/utils/apiResponse';
+import { apiResponse } from '../../Share/utils/apiResponse';
 
 export class TagsController {
   private service: TagsService;

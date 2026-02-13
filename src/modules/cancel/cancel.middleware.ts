@@ -1,12 +1,12 @@
 /**
- * Game Completion - Middleware
- * Validation middleware for manual game completion
+ * Game Cancellation - Middleware
+ * Validation middleware for game cancellation
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { GameRepository } from '../game.repository';
-import AppError from '../../../Share/utils/AppError';
-import { GameStatus } from '../game.types';
+import { GameRepository } from '../game/game.repository';
+import AppError from '../../Share/utils/AppError';
+import { GameStatus } from '../game/game.types';
 
 const gameRepository = new GameRepository();
 
@@ -45,9 +45,9 @@ export const checkGameOwnership = async (
 };
 
 /**
- * Check if game can be completed (status must not be ENDED)
+ * Check if game can be cancelled (status must be OPEN or FULL)
  */
-export const checkGameCompletable = async (
+export const checkGameCancellable = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -59,21 +59,12 @@ export const checkGameCompletable = async (
       throw new AppError('Game not found in request', 500, 'INTERNAL_ERROR');
     }
 
-    // Cannot complete already ended games
-    if (game.status === GameStatus.ENDED) {
+    // Only OPEN or FULL games can be cancelled
+    if (game.status !== GameStatus.OPEN && game.status !== GameStatus.FULL) {
       throw new AppError(
-        'Cannot complete game that is already ended',
+        `Cannot cancel game with status '${game.status}'. Only OPEN or FULL games can be cancelled.`,
         400,
         'INVALID_GAME_STATUS'
-      );
-    }
-
-    // Check if already completed
-    if (game.completedAt) {
-      throw new AppError(
-        'Game has already been completed',
-        400,
-        'ALREADY_COMPLETED'
       );
     }
 

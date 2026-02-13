@@ -5,11 +5,11 @@
 
 import { Router } from 'express';
 import { CancelGameController } from './cancel.controller';
-import { auth } from '../../auth/auth.middleware';
-import { validateDto } from '../../../Share/utils/validateDto';
-import { gameIdParamSchema } from '../game.dto';
+import { auth } from '../auth/auth.middleware';
+import { validateDto } from '../../Share/utils/validateDto';
+import { gameIdParamSchema } from '../game/game.dto';
 import { checkGameOwnership, checkGameCancellable } from './cancel.middleware';
-import { asyncHandler } from '../../../Share/utils/asyncHandler';
+import { asyncHandler } from '../../Share/utils/asyncHandler';
 
 const router = Router();
 const controller = new CancelGameController();

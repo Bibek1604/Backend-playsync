@@ -23,9 +23,9 @@ import {
 } from './game.middleware';
 import { gameImageUpload } from './game.uploader';
 import { asyncHandler } from '../../Share/utils/asyncHandler';
-import cancelRoutes from './cancel/cancel.routes';
-import completeRoutes from './complete/complete.routes';
-import tagsRoutes from './tags/tags.routes';
+import cancelRoutes from '../cancel/cancel.routes';
+import completeRoutes from '../complete/complete.routes';
+import tagsRoutes from '../tags/tags.routes';
 
 const router = Router();
 const controller = new GameController();

@@ -5,11 +5,11 @@
 
 import { Router } from 'express';
 import { CompleteGameController } from './complete.controller';
-import { auth } from '../../auth/auth.middleware';
-import { validateDto } from '../../../Share/utils/validateDto';
-import { gameIdParamSchema } from '../game.dto';
+import { auth } from '../auth/auth.middleware';
+import { validateDto } from '../../Share/utils/validateDto';
+import { gameIdParamSchema } from '../game/game.dto';
 import { checkGameOwnership, checkGameCompletable } from './complete.middleware';
-import { asyncHandler } from '../../../Share/utils/asyncHandler';
+import { asyncHandler } from '../../Share/utils/asyncHandler';
 
 const router = Router();
 const controller = new CompleteGameController();

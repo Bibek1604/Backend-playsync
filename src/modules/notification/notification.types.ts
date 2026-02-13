@@ -8,6 +8,8 @@ export enum NotificationType {
   CHAT_MESSAGE = 'chat_message',
   LEADERBOARD = 'leaderboard',
   GAME_CANCEL = 'game_cancel',
+  GAME_CANCELLED = 'game_cancelled',
+  GAME_COMPLETED = 'game_completed',
   SYSTEM = 'system'
 }
 

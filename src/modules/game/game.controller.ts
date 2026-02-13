@@ -27,7 +27,7 @@ export class GameController {
    *             type: object
    *             required:
    *               - title
-   *               - category
+   *               - tags
    *               - maxPlayers
    *               - endTime
    *             properties:
@@ -40,10 +40,16 @@ export class GameController {
    *                 type: string
    *                 maxLength: 2000
    *                 example: Weekly competitive match for all skill levels
-   *               category:
-   *                 type: string
-   *                 enum: [ONLINE, OFFLINE]
-   *                 example: ONLINE
+   *               tags:
+   *                 type: array
+   *                 description: Game tags (1-10 tags, 2-30 chars each)
+   *                 minItems: 1
+   *                 maxItems: 10
+   *                 items:
+   *                   type: string
+   *                   minLength: 2
+   *                   maxLength: 30
+   *                 example: ["valorant", "ranked", "online"]
    *               maxPlayers:
    *                 type: integer
    *                 minimum: 1
@@ -94,16 +100,16 @@ export class GameController {
    *     description: Retrieve all games with optional filtering and pagination
    *     parameters:
    *       - in: query
-   *         name: category
+   *         name: tags
    *         schema:
    *           type: string
-   *           enum: [ONLINE, OFFLINE]
-   *         description: Filter by game category
+   *         description: Filter by tags (comma-separated, e.g., "valorant,ranked")
+   *         example: "valorant,ranked"
    *       - in: query
    *         name: status
    *         schema:
    *           type: string
-   *           enum: [OPEN, FULL, ENDED]
+   *           enum: [OPEN, FULL, ENDED, CANCELLED]
    *         description: Filter by game status
    *       - in: query
    *         name: creatorId
@@ -163,7 +169,7 @@ export class GameController {
     try {
       const gameService = getGameService();
       const filters = {
-        category: req.query.category as any,
+        tags: req.query.tags ? (req.query.tags as string).split(',').map(t => t.trim()) : undefined,
         status: req.query.status as any,
         creatorId: req.query.creatorId as string,
         search: req.query.search as string,
@@ -247,15 +253,16 @@ export class GameController {
    *       - bearerAuth: []
    *     parameters:
    *       - in: query
-   *         name: category
+   *         name: tags
    *         schema:
    *           type: string
-   *           enum: [ONLINE, OFFLINE]
+   *         description: Filter by tags (comma-separated)
+   *         example: "valorant,ranked"
    *       - in: query
    *         name: status
    *         schema:
    *           type: string
-   *           enum: [OPEN, FULL, ENDED]
+   *           enum: [OPEN, FULL, ENDED, CANCELLED]
    *       - in: query
    *         name: page
    *         schema:
@@ -278,7 +285,7 @@ export class GameController {
       const userId = (req as any).user?.id;
 
       const filters = {
-        category: req.query.category as any,
+        tags: req.query.tags ? (req.query.tags as string).split(',').map(t => t.trim()) : undefined,
         status: req.query.status as any
       };
 
@@ -309,15 +316,16 @@ export class GameController {
    *       - bearerAuth: []
    *     parameters:
    *       - in: query
-   *         name: category
+   *         name: tags
    *         schema:
    *           type: string
-   *           enum: [ONLINE, OFFLINE]
+   *         description: Filter by tags (comma-separated)
+   *         example: "valorant,ranked"
    *       - in: query
    *         name: status
    *         schema:
    *           type: string
-   *           enum: [OPEN, FULL, ENDED]
+   *           enum: [OPEN, FULL, ENDED, CANCELLED]
    *       - in: query
    *         name: page
    *         schema:
@@ -340,7 +348,7 @@ export class GameController {
       const userId = (req as any).user?.id;
 
       const filters = {
-        category: req.query.category as any,
+        tags: req.query.tags ? (req.query.tags as string).split(',').map(t => t.trim()) : undefined,
         status: req.query.status as any
       };
 

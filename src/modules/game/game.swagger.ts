@@ -20,11 +20,16 @@
  *           maxLength: 2000
  *           description: Game description
  *           example: "Weekly competitive match for all skill levels"
- *         category:
- *           type: string
- *           enum: [ONLINE, OFFLINE]
- *           description: Game category
- *           example: "ONLINE"
+ *         tags:
+ *           type: array
+ *           description: Game tags for categorization and filtering
+ *           minItems: 1
+ *           maxItems: 10
+ *           items:
+ *             type: string
+ *             minLength: 2
+ *             maxLength: 30
+ *           example: ["valorant", "ranked", "online"]
  *         imageUrl:
  *           type: string
  *           description: Cloudinary image URL
@@ -46,7 +51,7 @@
  *           example: 23
  *         status:
  *           type: string
- *           enum: [OPEN, FULL, ENDED]
+ *           enum: [OPEN, FULL, ENDED, CANCELLED]
  *           description: Game status
  *           example: "OPEN"
  *         creatorId:
@@ -89,6 +94,16 @@
  *           format: date-time
  *           description: Actual end time (set by system)
  *           example: null
+ *         cancelledAt:
+ *           type: string
+ *           format: date-time
+ *           description: When the game was cancelled (null if not cancelled)
+ *           example: null
+ *         completedAt:
+ *           type: string
+ *           format: date-time
+ *           description: When the game was manually completed (null if not completed)
+ *           example: null
  *         metadata:
  *           type: object
  *           description: Additional game metadata
@@ -124,19 +139,15 @@
  *           description: Total number of pages
  *           example: 8
  *
- *     GameCategory:
- *       type: string
- *       enum: [ONLINE, OFFLINE]
- *       description: Game category type
- *
  *     GameStatus:
  *       type: string
- *       enum: [OPEN, FULL, ENDED]
+ *       enum: [OPEN, FULL, ENDED, CANCELLED]
  *       description: |
  *         Game status:
  *         - OPEN: Game is accepting players
  *         - FULL: Game has reached maximum capacity
  *         - ENDED: Game has finished
+ *         - CANCELLED: Game was cancelled by creator
  *
  *     ParticipantStatus:
  *       type: string

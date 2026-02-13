@@ -23,6 +23,9 @@ import {
 } from './game.middleware';
 import { gameImageUpload } from './game.uploader';
 import { asyncHandler } from '../../Share/utils/asyncHandler';
+import cancelRoutes from './cancel/cancel.routes';
+import completeRoutes from './complete/complete.routes';
+import tagsRoutes from './tags/tags.routes';
 
 const router = Router();
 const controller = new GameController();
@@ -115,5 +118,12 @@ router.delete(
   checkGameOwnership,
   asyncHandler(controller.delete.bind(controller))
 );
+
+// Mount cancel and complete routes
+router.use('/', cancelRoutes);
+router.use('/', completeRoutes);
+
+// Mount tags routes
+router.use('/tags', tagsRoutes);
 
 export default router;

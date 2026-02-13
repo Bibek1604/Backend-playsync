@@ -1,11 +1,3 @@
-/**
- * OPTIONAL: Redis Caching for Leaderboard
- * Improves performance by caching leaderboard data
- * 
- * Installation:
- * npm install redis
- * npm install -D @types/redis
- */
 
 import { createClient, RedisClientType } from 'redis';
 import { LeaderboardResponse } from '../../modules/scorecard/scorecard.types';
@@ -38,16 +30,12 @@ class LeaderboardCache {
     }
   }
 
-  /**
-   * Generate cache key based on query parameters
-   */
+
   private getCacheKey(page: number, limit: number, period: string): string {
     return `leaderboard:${period}:p${page}:l${limit}`;
   }
 
-  /**
-   * Get cached leaderboard data
-   */
+ 
   async get(
     page: number,
     limit: number,
@@ -92,10 +80,7 @@ class LeaderboardCache {
     }
   }
 
-  /**
-   * Invalidate all leaderboard cache
-   * Call this when game participation changes
-   */
+
   async invalidate(): Promise<void> {
     if (!this.client) return;
 
@@ -110,9 +95,7 @@ class LeaderboardCache {
     }
   }
 
-  /**
-   * Get cache statistics
-   */
+
   async getStats(): Promise<{ keys: number; memory: string }> {
     if (!this.client) {
       return { keys: 0, memory: '0B' };

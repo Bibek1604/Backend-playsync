@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { GameCategory, GameStatus } from './game.types';
+import { GameStatus } from './game.types';
 
 // Create Game DTO
 export const createGameSchema = z.object({
@@ -21,9 +21,23 @@ export const createGameSchema = z.object({
       .trim()
       .optional(),
     
-    category: z.nativeEnum(GameCategory, {
-      message: 'Category must be either ONLINE or OFFLINE'
-    }),
+    tags: z
+      .array(
+        z.string()
+          .min(2, 'Each tag must be at least 2 characters')
+          .max(30, 'Each tag must not exceed 30 characters')
+          .trim()
+      )
+      .min(1, 'At least one tag is required')
+      .max(10, 'Maximum 10 tags allowed')
+      .transform((tags) => {
+        // Normalize: lowercase, trim, and remove duplicates
+        const normalized = tags.map(tag => tag.toLowerCase().trim());
+        return [...new Set(normalized)];
+      })
+      .refine((tags) => tags.length >= 1, {
+        message: 'At least one unique tag is required after normalization'
+      }),
     
     maxPlayers: z
       .number()
@@ -95,7 +109,15 @@ export const updateGameSchema = z.object({
 // Query Parameters for Get All Games (Enhanced Discovery)
 export const getGamesQuerySchema = z.object({
   query: z.object({
-    category: z.nativeEnum(GameCategory).optional(),
+    tags: z
+      .string()
+      .optional()
+      .transform((val) => {
+        if (!val) return undefined;
+        // Split by comma, trim, lowercase, and remove duplicates
+        const tagArray = val.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
+        return tagArray.length > 0 ? tagArray : undefined;
+      }),
     status: z.nativeEnum(GameStatus).optional(),
     creatorId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid creator ID format').optional(),
     search: z.string().max(100).optional(),

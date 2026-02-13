@@ -19,7 +19,7 @@ export interface IGameParticipantDocument extends Document {
 export interface IGameDocument extends Document {
   title: string;
   description?: string;
-  category: GameCategory;
+  tags: string[];
   imageUrl?: string;
   imagePublicId?: string;
   maxPlayers: number;
@@ -32,6 +32,8 @@ export interface IGameDocument extends Document {
   startTime: Date;
   endTime: Date;
   endedAt?: Date;
+  cancelledAt?: Date;
+  completedAt?: Date;
   metadata: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
@@ -78,10 +80,19 @@ const gameSchema = new Schema<IGameDocument>(
       maxlength: [2000, 'Description must not exceed 2000 characters'],
       default: ''
     },
-    category: {
-      type: String,
-      enum: Object.values(GameCategory),
-      required: [true, 'Game category is required']
+    tags: {
+      type: [String],
+      required: [true, 'At least one tag is required'],
+      validate: {
+        validator: function(tags: string[]) {
+          return tags && tags.length >= 1 && tags.length <= 10;
+        },
+        message: 'Game must have between 1 and 10 tags'
+      },
+      set: function(tags: string[]) {
+        // Normalize tags: lowercase, trim, and remove duplicates
+        return [...new Set(tags.map(tag => tag.toLowerCase().trim()))];
+      }
     },
     imageUrl: {
       type: String,
@@ -152,6 +163,14 @@ const gameSchema = new Schema<IGameDocument>(
       type: Date,
       default: null
     },
+    cancelledAt: {
+      type: Date,
+      default: null
+    },
+    completedAt: {
+      type: Date,
+      default: null
+    },
     metadata: {
       type: Schema.Types.Mixed,
       default: {}
@@ -167,7 +186,7 @@ const gameSchema = new Schema<IGameDocument>(
 // Indexes for performance
 gameSchema.index({ status: 1 });
 gameSchema.index({ creatorId: 1 });
-gameSchema.index({ category: 1 });
+gameSchema.index({ tags: 1 });
 gameSchema.index({ endTime: 1, status: 1 });
 gameSchema.index({ 'participants.userId': 1 });
 gameSchema.index({ title: 'text', description: 'text' }); // Text search
@@ -175,7 +194,7 @@ gameSchema.index({ title: 'text', description: 'text' }); // Text search
 // Additional indexes for discovery and join performance
 gameSchema.index({ status: 1, currentPlayers: 1, maxPlayers: 1 });
 gameSchema.index({ startTime: 1, status: 1 });
-gameSchema.index({ category: 1, status: 1 });
+gameSchema.index({ tags: 1, status: 1 });
 gameSchema.index({ createdAt: -1 });
 
 // Compound index for active games query
@@ -185,7 +204,7 @@ gameSchema.index({ status: 1, endTime: 1 }, {
 
 // Compound index for common discovery queries
 gameSchema.index(
-  { status: 1, category: 1, startTime: 1 },
+  { status: 1, tags: 1, startTime: 1 },
   { name: 'discovery_compound_idx' }
 );
 

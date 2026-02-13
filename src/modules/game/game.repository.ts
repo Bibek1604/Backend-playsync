@@ -79,8 +79,8 @@ export class GameRepository implements IGameRepository {
     const query: any = {};
 
     // Apply filters
-    if (filters.category) {
-      query.category = filters.category;
+    if (filters.tags && filters.tags.length > 0) {
+      query.tags = { $all: filters.tags };
     }
     if (filters.status) {
       query.status = filters.status;
@@ -114,8 +114,8 @@ export class GameRepository implements IGameRepository {
   ): Promise<{ games: IGameDocument[], total: number }> {
     const query: any = { creatorId: new mongoose.Types.ObjectId(creatorId) };
 
-    if (filters.category) {
-      query.category = filters.category;
+    if (filters.tags && filters.tags.length > 0) {
+      query.tags = { $all: filters.tags };
     }
     if (filters.status) {
       query.status = filters.status;
@@ -145,8 +145,8 @@ export class GameRepository implements IGameRepository {
       'participants.status': 'ACTIVE'
     };
 
-    if (filters.category) {
-      query.category = filters.category;
+    if (filters.tags && filters.tags.length > 0) {
+      query.tags = { $all: filters.tags };
     }
     if (filters.status) {
       query.status = filters.status;
@@ -342,8 +342,10 @@ export class GameRepository implements IGameRepository {
     // Status filter
     if (filters.status) query.status = filters.status;
     
-    // Category filter  
-    if (filters.category) query.category = filters.category;
+    // Tags filter  
+    if (filters.tags && filters.tags.length > 0) {
+      query.tags = { $all: filters.tags };
+    }
     
     // Available slots filter
     if (filters.availableSlots) {

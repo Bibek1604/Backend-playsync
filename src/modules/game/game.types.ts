@@ -33,7 +33,7 @@ export interface IGame {
   id: string;
   title: string;
   description?: string;
-  category: GameCategory;
+  tags: string[];
   imageUrl?: string;
   imagePublicId?: string;
   maxPlayers: number;
@@ -69,7 +69,7 @@ export interface IGameWithParticipants extends IGame {
 }
 
 export interface IGameFilters {
-  category?: GameCategory;
+  tags?: string[];
   status?: GameStatus;
   creatorId?: string;
   search?: string;

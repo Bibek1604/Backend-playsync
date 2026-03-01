@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { logger } from "./logger";
+import logger from "./logger";
 
 // Email configuration interface
 interface EmailOptions {
@@ -12,22 +12,26 @@ interface EmailOptions {
 // Nodemailer transporter configuration
 const createTransporter = () => {
   const emailUser = process.env.EMAIL_USER;
-  const emailPass = process.env.EMAIL_PASS;
+  const emailPassword = process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS;
+  const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com";
+  const emailPort = Number(process.env.EMAIL_PORT || 587);
+  const emailSecure = (process.env.EMAIL_SECURE || "false").toLowerCase() === "true";
 
-  if (!emailUser || !emailPass) {
-    logger.error("Email credentials not configured in environment variables");
+  if (!emailUser || !emailPassword) {
+    logger.error(
+      "Email credentials not configured. Required env vars: EMAIL_USER and EMAIL_PASSWORD (or EMAIL_PASS)."
+    );
     throw new Error("Email service is not properly configured");
   }
 
-  return nodemailer.createTransporter({
-    service: "gmail",
+  return nodemailer.createTransport({
+    host: emailHost,
+    port: emailPort,
+    secure: emailSecure,
     auth: {
       user: emailUser,
-      pass: emailPass, // Use Gmail App Password, not regular password
+      pass: emailPassword,
     },
-    // Enable secure connection
-    secure: true,
-    // Connection timeout
     connectionTimeout: 10000,
   });
 };
@@ -58,7 +62,26 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
     logger.info(`Email sent successfully to ${options.to}. MessageId: ${info.messageId}`);
     return true;
   } catch (error) {
-    logger.error("Failed to send email:", error);
+    const emailError = error as {
+      code?: string;
+      responseCode?: number;
+      response?: string;
+      command?: string;
+    };
+
+    if (
+      emailError?.code === "EAUTH" ||
+      emailError?.responseCode === 534 ||
+      emailError?.response?.includes("Application-specific password required")
+    ) {
+      logger.error(
+        { error: emailError },
+        "Email authentication failed. Gmail SMTP requires an App Password (not your normal Gmail password)."
+      );
+    } else {
+      logger.error({ error }, "Failed to send email");
+    }
+
     // Don't throw error to prevent exposing internal details to users
     return false;
   }
@@ -77,6 +100,8 @@ export const sendPasswordResetOTP = async (
   fullName: string
 ): Promise<boolean> => {
   const subject = "Password Reset OTP - PlaySync";
+  const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+  const resetUrl = `${clientUrl}/auth/reset-password?email=${encodeURIComponent(email)}&otp=${otp}`;
   
   const html = `
     <!DOCTYPE html>
@@ -147,6 +172,12 @@ export const sendPasswordResetOTP = async (
             <div class="otp-code">${otp}</div>
             <p style="margin: 10px 0 0 0; color: #666; font-size: 12px;">Valid for 10 minutes</p>
           </div>
+
+          <p style="text-align: center; margin: 24px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background: #16a34a; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 700;">
+              Open Reset Password Page
+            </a>
+          </p>
           
           <div class="warning">
             <strong>⚠️ Security Notice:</strong>
@@ -174,6 +205,8 @@ export const sendPasswordResetOTP = async (
     You recently requested to reset your password for your PlaySync account.
     
     Your OTP Code: ${otp}
+
+    Reset link: ${resetUrl}
     
     This code is valid for 10 minutes only.
     

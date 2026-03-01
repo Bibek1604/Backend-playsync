@@ -21,11 +21,10 @@ import { asyncHandler } from "./Share/utils/asyncHandler";
 import logger from "./Share/utils/logger";
 const app = express();
 
-// CORS configuration - Allow all origins for development
 const corsOptions: cors.CorsOptions = {
   origin: true, // Reflects the request origin, allowing all origins with credentials
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+  // Let cors module reflect any headers the client asks for:
   credentials: true, // Allow cookies and authorization headers
   optionsSuccessStatus: 200, // For legacy browser support
   preflightContinue: false,

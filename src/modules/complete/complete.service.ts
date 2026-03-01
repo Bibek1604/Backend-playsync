@@ -11,13 +11,17 @@ import { GameStatus, ParticipantStatus } from '../game/game.types';
 import { getSocketServer } from '../../websocket/socket.server';
 import AppError from '../../Share/utils/AppError';
 
+import { UserService } from '../user/user.service';
+
 export class CompleteGameService {
   private gameRepository: GameRepository;
   private notificationService: NotificationService;
+  private userService: UserService;
 
   constructor() {
     this.gameRepository = new GameRepository();
     this.notificationService = new NotificationService();
+    this.userService = new UserService();
   }
 
   /**
@@ -58,8 +62,16 @@ export class CompleteGameService {
       )
     );
 
-    // Execute all notifications in parallel
-    await Promise.allSettled(notificationPromises);
+    // Update stats for the creator
+    await this.userService.updateUserStats(game.creatorId.toString(), true, 150); // Creator gets more XP and a "win" for hosting?
+
+    // Update stats for all active participants
+    const statsPromises = activeParticipants.map((participant) =>
+      this.userService.updateUserStats(participant.userId.toString(), false, 100) // For now, assume participants didn't "win" but got XP.
+    );
+
+    // Execute all notifications and stats updates in parallel
+    await Promise.allSettled([...notificationPromises, ...statsPromises]);
 
     // Emit Socket.IO event to game room
     try {

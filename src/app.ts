@@ -12,6 +12,11 @@ import scorecardRoutes from "./modules/scorecard/scorecard.routes";
 import leaderboardRoutes from "./modules/leaderboard/leaderboard.routes";
 import adminRoutes from "./modules/admin/admin.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
+import userRoutes from "./modules/user/user.routes";
+import { Router } from 'express';
+import { auth } from "./modules/auth/auth.middleware";
+import { UserController } from "./modules/user/user.controller";
+import { asyncHandler } from "./Share/utils/asyncHandler";
 
 import logger from "./Share/utils/logger";
 const app = express();
@@ -86,6 +91,15 @@ app.use(`${API_BASE}/scorecard`, scorecardRoutes);
 app.use(`${API_BASE}/leaderboard`, leaderboardRoutes);
 app.use(`${API_BASE}/admin`, adminRoutes);
 app.use(`${API_BASE}/notifications`, notificationRoutes);
+app.use(`${API_BASE}/users`, userRoutes);
+
+// ── /api/v1/profile aliases (frontend uses these endpoints) ──
+const profileRouter = Router();
+const userCtrl = new UserController();
+profileRouter.get('/', auth, asyncHandler(userCtrl.getMyProfile.bind(userCtrl)));
+profileRouter.patch('/', auth, asyncHandler(userCtrl.updateMyProfile.bind(userCtrl)));
+profileRouter.get('/:id', asyncHandler(userCtrl.getProfile.bind(userCtrl)));
+app.use(`${API_BASE}/profile`, profileRouter);
 
 app.get("/", (_req, res) => {
   res.send(
@@ -95,8 +109,32 @@ app.get("/", (_req, res) => {
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error(err.stack);
+
+  // Handle Mongoose Validation Errors
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: Object.values(err.errors).map((e: any) => ({
+        field: e.path,
+        message: e.message
+      })),
+      errorCode: 'VALIDATION_ERROR'
+    });
+  }
+
+  // Handle Mongoose Cast Errors (e.g. invalid ObjectId)
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid ${err.path}: ${err.value}`,
+      errorCode: 'INVALID_INPUT'
+    });
+  }
+
   if (err.statusCode) {
     const response: any = {
+      success: false,
       message: err.message,
       errorCode: err.errorCode || 'INTERNAL_ERROR'
     };
@@ -105,7 +143,11 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
     }
     res.status(err.statusCode).json(response);
   } else {
-    res.status(500).json({ message: "Internal Server Error", errorCode: 'INTERNAL_ERROR' });
+    res.status(500).json({
+      success: false,
+      message: process.env.NODE_ENV === 'production' ? "Internal Server Error" : err.message,
+      errorCode: 'INTERNAL_ERROR'
+    });
   }
 });
 

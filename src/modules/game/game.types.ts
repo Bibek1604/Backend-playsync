@@ -43,6 +43,8 @@ export interface IGame {
   startTime: Date;
   endTime: Date;
   endedAt?: Date;
+  category: GameCategory;
+  locationName?: string;
   metadata?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
@@ -83,8 +85,12 @@ export interface IGameDiscoveryFilters extends IGameFilters {
   startTimeFrom?: Date;           // Filter by start time range
   startTimeTo?: Date;
   includeEnded?: boolean;         // Include ended games (default: false)
-  sortBy?: 'createdAt' | 'startTime' | 'endTime' | 'popularity';
+  sortBy?: 'createdAt' | 'startTime' | 'endTime' | 'popularity' | 'distance';
   sortOrder?: 'asc' | 'desc';
+  category?: GameCategory;
+  latitude?: number;
+  longitude?: number;
+  radius?: number; // in kilometers
 }
 
 export interface IPaginationParams {

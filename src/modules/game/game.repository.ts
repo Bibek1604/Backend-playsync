@@ -24,7 +24,7 @@ export interface IGameRepository {
 }
 
 export class GameRepository implements IGameRepository {
-  
+
   async create(gameData: Partial<IGameDocument>): Promise<IGameDocument> {
     const game = new Game(gameData);
     return await game.save();
@@ -213,8 +213,8 @@ export class GameRepository implements IGameRepository {
         },
         $inc: { currentPlayers: 1 }
       },
-      { 
-        new: true, 
+      {
+        new: true,
         runValidators: true,
         populate: { path: 'creatorId', select: 'fullName email profilePicture' }
       }
@@ -236,12 +236,12 @@ export class GameRepository implements IGameRepository {
         {
           $set: { status: GameStatus.FULL }
         },
-        { 
+        {
           new: true,
           populate: { path: 'creatorId', select: 'fullName email profilePicture' }
         }
       );
-      
+
       return updatedGame || game;  // Return updated or original
     }
 
@@ -278,7 +278,7 @@ export class GameRepository implements IGameRepository {
         },
         $inc: { currentPlayers: -1 }
       },
-      { 
+      {
         new: true,
         populate: { path: 'creatorId', select: 'fullName email profilePicture' }
       }
@@ -299,12 +299,12 @@ export class GameRepository implements IGameRepository {
         {
           $set: { status: GameStatus.OPEN }
         },
-        { 
+        {
           new: true,
           populate: { path: 'creatorId', select: 'fullName email profilePicture' }
         }
       );
-      
+
       return updatedGame || game;  // Return updated or original
     }
 
@@ -338,7 +338,7 @@ export class GameRepository implements IGameRepository {
     game?: IGameDocument;
   }> {
     const game = await Game.findById(gameId);
-    
+
     if (!game) {
       return { canJoin: false, reasons: ['Game not found'] };
     }
@@ -376,10 +376,26 @@ export class GameRepository implements IGameRepository {
     pagination: IPaginationParams
   ): Promise<{ games: IGameDocument[], total: number }> {
     const query = this.buildDiscoveryQuery(filters);
-    const sort = this.buildSortQuery(filters.sortBy, filters.sortOrder);
-    
+    const hasGeospatial = !!query.location;
+    const sort = hasGeospatial ? {} : this.buildSortQuery(filters.sortBy, filters.sortOrder);
+
+    // For countDocuments, we need to convert $nearSphere to $geoWithin because
+    // countDocuments doesn't support $nearSphere (which implies a sort)
+    const countQuery = JSON.parse(JSON.stringify(query));
+    if (hasGeospatial && countQuery.location?.$nearSphere) {
+      const nearSphere = countQuery.location.$nearSphere;
+      countQuery.location = {
+        $geoWithin: {
+          $centerSphere: [
+            nearSphere.$geometry.coordinates,
+            nearSphere.$maxDistance / 6378100 // Convert meters to radians
+          ]
+        }
+      };
+    }
+
     const skip = (pagination.page - 1) * pagination.limit;
-    
+
     const [games, total] = await Promise.all([
       Game.find(query)
         .select('-participants -metadata')  // Exclude heavy fields for listing
@@ -388,23 +404,23 @@ export class GameRepository implements IGameRepository {
         .skip(skip)
         .limit(pagination.limit)
         .lean(),
-      Game.countDocuments(query)
+      Game.countDocuments(countQuery)
     ]);
-    
+
     return { games: games as IGameDocument[], total };
   }
-  
+
   private buildDiscoveryQuery(filters: any): any {
     const query: any = {};
-    
+
     // Status filter
     if (filters.status) query.status = filters.status;
-    
+
     // Tags filter  
     if (filters.tags && filters.tags.length > 0) {
       query.tags = { $all: filters.tags };
     }
-    
+
     // Available slots filter
     if (filters.availableSlots) {
       query.$expr = { $lt: ['$currentPlayers', '$maxPlayers'] };
@@ -412,31 +428,31 @@ export class GameRepository implements IGameRepository {
         query.status = GameStatus.OPEN;
       }
     }
-    
+
     // Capacity range
     if (filters.minPlayers || filters.maxPlayers) {
       query.maxPlayers = {};
       if (filters.minPlayers) query.maxPlayers.$gte = filters.minPlayers;
       if (filters.maxPlayers) query.maxPlayers.$lte = filters.maxPlayers;
     }
-    
+
     // Time range
     if (filters.startTimeFrom || filters.startTimeTo) {
       query.startTime = {};
       if (filters.startTimeFrom) query.startTime.$gte = filters.startTimeFrom;
       if (filters.startTimeTo) query.startTime.$lte = filters.startTimeTo;
     }
-    
+
     // Text search
     if (filters.search) {
       query.$text = { $search: filters.search };
     }
-    
+
     // Creator filter
     if (filters.creatorId) {
       query.creatorId = new mongoose.Types.ObjectId(filters.creatorId);
     }
-    
+
     // Exclude ended games by default
     if (!filters.includeEnded) {
       if (query.status) {
@@ -449,13 +465,30 @@ export class GameRepository implements IGameRepository {
         query.status = { $ne: GameStatus.ENDED };
       }
     }
-    
+
+    // Category filter
+    if (filters.category) query.category = filters.category;
+
+    // Geospatial filter (Nearest place) - Skip if coords are 0 or undefined to prevent equator results
+    if (filters.latitude && filters.longitude) {
+      const radiusInMeters = (filters.radius || 10) * 1000; // default 10km
+      query.location = {
+        $nearSphere: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [Number(filters.longitude), Number(filters.latitude)]
+          },
+          $maxDistance: radiusInMeters
+        }
+      };
+    }
+
     return query;
   }
-  
+
   private buildSortQuery(sortBy?: string, sortOrder: string = 'desc'): any {
     const order = sortOrder === 'asc' ? 1 : -1;
-    
+
     switch (sortBy) {
       case 'startTime':
         return { startTime: order };
@@ -463,6 +496,10 @@ export class GameRepository implements IGameRepository {
         return { endTime: order };
       case 'popularity':
         return { currentPlayers: order, createdAt: -1 };
+      case 'distance':
+        // Note: distance sorting is typically handled by $nearSphere which sorts by distance automatically
+        // If using $nearSphere, we don't need additional sorting by distance in the sort stage
+        return {};
       case 'createdAt':
       default:
         return { createdAt: order };

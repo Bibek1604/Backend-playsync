@@ -18,11 +18,7 @@ const GameInvitationSchema = new Schema<IGameInvitation>(
     gameId: { type: Schema.Types.ObjectId, ref: 'Game', required: true, index: true },
     invitedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     invitedUser: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    status: {
-      type: String,
-      enum: ['pending', 'accepted', 'declined', 'expired'],
-      default: 'pending',
-    },
+    status: { type: String, enum: ['pending', 'accepted', 'declined', 'expired'], default: 'pending' },
     message: { type: String, maxlength: 200 },
     expiresAt: { type: Date, required: true },
     respondedAt: { type: Date },

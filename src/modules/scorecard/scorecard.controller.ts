@@ -56,4 +56,19 @@ export class ScorecardController {
       })
     );
   }
+
+  /**
+   * GET /api/v1/scorecard/trend
+   * Get XP trend data for charting
+   */
+  async getMyTrend(req: Request, res: Response): Promise<void> {
+    const userId = (req as any).user?.id;
+    const days = parseInt(req.query.days as string) || 7;
+
+    const trend = await this.scorecardService.getMyTrend(userId, days);
+
+    res.status(200).json(
+      apiResponse(true, 'Trend data retrieved successfully', trend)
+    );
+  }
 }

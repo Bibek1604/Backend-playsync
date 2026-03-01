@@ -4,14 +4,19 @@
  */
 
 export interface PointsBreakdown {
-  pointsFromJoins: number;
-  pointsFromTime: number;
+  pointsFromWins: number;
+  pointsFromGames: number;
+  pointsFromXP: number;
 }
 
 export interface ScorecardData {
-  totalPoints: number;
-  gamesJoined: number;
-  totalMinutesPlayed: number;
+  totalPoints: number; // For backward compatibility, mapped from XP
+  xp: number;
+  level: number;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  winRate: number;
   rank?: number;
   breakdown: PointsBreakdown;
 }
@@ -20,10 +25,11 @@ export interface LeaderboardEntry {
   rank: number;
   userId: string;
   fullName: string;
-  profilePicture: string | null;
-  totalPoints: number;
-  gamesJoined: number;
-  totalMinutes: number;
+  avatar: string | null;
+  xp: number;
+  level: number;
+  wins: number;
+  totalGames: number;
 }
 
 export interface LeaderboardResponse {

@@ -24,4 +24,15 @@ router.get(
   asyncHandler(controller.getMyScorecard.bind(controller))
 );
 
+/**
+ * @route   GET /api/v1/scorecard/trend
+ * @desc    Get XP trend data for charting (last N days)
+ * @access  Private
+ */
+router.get(
+  '/trend',
+  auth,
+  asyncHandler(controller.getMyTrend.bind(controller))
+);
+
 export default router;

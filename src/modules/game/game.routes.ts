@@ -26,9 +26,13 @@ import { asyncHandler } from '../../Share/utils/asyncHandler';
 import cancelRoutes from '../cancel/cancel.routes';
 import completeRoutes from '../complete/complete.routes';
 import tagsRoutes from '../tags/tags.routes';
+import inviteLinkRoutes from './invite-link.routes';
 
 const router = Router();
 const controller = new GameController();
+
+// Mount invite link routes
+router.use('/', inviteLinkRoutes);
 
 // Create a new game (authenticated users only)
 router.post(

@@ -1,7 +1,8 @@
 /**
- * GameCapacityManager — atomic join/leave with MongoDB $expr guard.
- * Prevents race conditions in concurrent join requests.
+ * GameCapacityManager — handles player join/leave capacity tracking with
+ * atomic-safe checks (MongoDB $inc with pre-condition).
  */
+
 import mongoose, { Types } from 'mongoose';
 
 export type CapacityCheckResult =
@@ -9,9 +10,7 @@ export type CapacityCheckResult =
   | { allowed: false; reason: 'full' | 'already_joined' | 'game_not_found' | 'game_closed' };
 
 export class GameCapacityManager {
-  private get gameModel() {
-    return mongoose.model('Game');
-  }
+  private gameModel = mongoose.model('Game');
 
   async canJoin(gameId: string, userId: string): Promise<CapacityCheckResult> {
     const game = await this.gameModel
@@ -21,9 +20,12 @@ export class GameCapacityManager {
 
     if (!game) return { allowed: false, reason: 'game_not_found' };
     if (game.status !== 'open') return { allowed: false, reason: 'game_closed' };
-    const alreadyIn = (game.players as Types.ObjectId[]).some((p) => p.toString() === userId);
-    if (alreadyIn) return { allowed: false, reason: 'already_joined' };
-    if (game.currentPlayers >= game.maxPlayers) return { allowed: false, reason: 'full' };
+    if ((game.players as string[]).map(String).includes(userId)) {
+      return { allowed: false, reason: 'already_joined' };
+    }
+    if (game.currentPlayers >= game.maxPlayers) {
+      return { allowed: false, reason: 'full' };
+    }
     return { allowed: true };
   }
 
@@ -54,5 +56,3 @@ export class GameCapacityManager {
     return result.modifiedCount === 1;
   }
 }
-
-export const gameCapacityManager = new GameCapacityManager();

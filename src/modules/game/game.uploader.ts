@@ -4,7 +4,7 @@
  */
 
 import multer from 'multer';
-import { v2 as cloudinary } from 'cloudinary';
+import cloudinary from '../../Share/config/cloudinary';
 import { Readable } from 'stream';
 import AppError from '../../Share/utils/AppError';
 
@@ -14,7 +14,7 @@ const storage = multer.memoryStorage();
 // File filter - only allow images
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  
+
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -51,7 +51,8 @@ export const uploadToCloudinary = (
       },
       (error, result) => {
         if (error) {
-          reject(new AppError('Failed to upload image to Cloudinary', 500));
+          console.error('[Cloudinary] Upload Stream Error:', error);
+          reject(new AppError(`Cloudinary Upload Error: ${error.message}`, 500));
         } else if (result) {
           resolve({
             url: result.secure_url,
@@ -92,23 +93,24 @@ export const validateImageDimensions = async (
       { resource_type: 'image' },
       (error, result) => {
         if (error) {
-          reject(new AppError('Failed to validate image', 400));
+          console.error('[Cloudinary] Image validation upload stream error:', error);
+          reject(new AppError(error.message || 'Failed to validate image dimensions', 400));
         } else if (result) {
           // Delete the temporary upload
-          cloudinary.uploader.destroy(result.public_id).catch(() => {});
-          
+          cloudinary.uploader.destroy(result.public_id).catch(() => { });
+
           const { width, height } = result;
-          
+
           // Check minimum dimensions
           if (width < 200 || height < 200) {
             reject(new AppError('Image dimensions must be at least 200x200 pixels', 400));
           }
-          
+
           // Check maximum dimensions
           if (width > 4000 || height > 4000) {
             reject(new AppError('Image dimensions cannot exceed 4000x4000 pixels', 400));
           }
-          
+
           resolve({ width, height });
         }
       }

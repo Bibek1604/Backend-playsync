@@ -15,18 +15,21 @@ import { emitSystemMessage } from '../chat/chat.socket';
 import { ChatService } from '../chat/chat.service';
 import { NotificationService } from '../notification/notification.service';
 import { User } from '../auth/auth.model';
+import { UserService } from '../user/user.service';
 
 export class GameService {
   private gameRepository: GameRepository;
   private socketEmitter?: GameEventsEmitter;
   private chatService: ChatService;
   private notificationService: NotificationService;
+  private userService: UserService;
 
   constructor(socketEmitter?: GameEventsEmitter) {
     this.gameRepository = new GameRepository();
     this.socketEmitter = socketEmitter;
     this.chatService = new ChatService();
     this.notificationService = new NotificationService();
+    this.userService = new UserService();
   }
 
   /**
@@ -46,8 +49,9 @@ export class GameService {
         const uploadResult = await uploadToCloudinary(imageFile.buffer, 'games');
         imageUrl = uploadResult.url;
         imagePublicId = uploadResult.publicId;
-      } catch (error) {
-        throw new AppError('Failed to upload game image', 500);
+      } catch (error: any) {
+        console.error('[GameService] Image upload failed:', error);
+        throw new AppError(error.message || 'Failed to upload game image', 500);
       }
     }
 
@@ -59,31 +63,39 @@ export class GameService {
       imagePublicId,
       currentPlayers: 0,
       status: GameStatus.OPEN,
-      startTime: new Date()
+      startTime: (data as any).startTime || new Date()
     };
 
     try {
       const game = await this.gameRepository.create(gameData as any);
-      
+
+      // Automatically add creator as the first participant
+      await this.gameRepository.addParticipant(game._id.toString(), creatorId);
+
+      // Re-fetch to include the participant and accurate player count
+      const finalGame = await this.gameRepository.findByIdWithCreator(game._id.toString());
+
       // Emit real-time event
-      if (this.socketEmitter) {
-        this.socketEmitter.emitGameCreated(game._id.toString(), {
-          id: game._id,
-          title: game.title,
-          category: game.category,
-          status: game.status,
-          maxPlayers: game.maxPlayers,
-          currentPlayers: game.currentPlayers
+      if (this.socketEmitter && finalGame) {
+        this.socketEmitter.emitGameCreated(finalGame._id.toString(), {
+          id: finalGame._id,
+          title: finalGame.title,
+          category: finalGame.category,
+
+          status: finalGame.status,
+          maxPlayers: finalGame.maxPlayers,
+          currentPlayers: finalGame.currentPlayers
         });
       }
-      
-      return game;
+
+      return finalGame || game;
     } catch (error: any) {
+      console.error('[GameService] Game creation failed:', error);
       // Clean up uploaded image if game creation fails
       if (imagePublicId) {
         await deleteFromCloudinary(imagePublicId);
       }
-      throw new AppError(error.message || 'Failed to create game', 500);
+      throw new AppError(error.message || 'Failed to create game', error.statusCode || 500);
     }
   }
 
@@ -254,13 +266,13 @@ export class GameService {
     // Delete image from Cloudinary
     if (game.imagePublicId) {
       await deleteFromCloudinary(game.imagePublicId);
-    // Delete all chat messages for this game
-    try {
-      await this.chatService.deleteGameChat(gameId);
-    } catch (error) {
-      console.error('Failed to delete game chat messages:', error);
-      // Continue with game deletion even if chat cleanup fails
-    }
+      // Delete all chat messages for this game
+      try {
+        await this.chatService.deleteGameChat(gameId);
+      } catch (error) {
+        console.error('Failed to delete game chat messages:', error);
+        // Continue with game deletion even if chat cleanup fails
+      }
 
     }
 
@@ -281,7 +293,7 @@ export class GameService {
    */
   async checkJoinEligibility(gameId: string, userId: string): Promise<IJoinEligibility> {
     const result = await this.gameRepository.canUserJoinGame(gameId, userId);
-    
+
     return {
       canJoin: result.canJoin,
       reasons: result.reasons,
@@ -297,7 +309,7 @@ export class GameService {
   async joinGame(gameId: string, userId: string): Promise<IGameDocument> {
     // Pre-flight check
     const eligibility = await this.gameRepository.canUserJoinGame(gameId, userId);
-    
+
     if (!eligibility.canJoin) {
       throw new AppError(eligibility.reasons[0], 400);
     }
@@ -317,8 +329,8 @@ export class GameService {
       );
     }
 
-    const creatorId = updatedGame.creatorId._id 
-      ? updatedGame.creatorId._id.toString() 
+    const creatorId = updatedGame.creatorId._id
+      ? updatedGame.creatorId._id.toString()
       : updatedGame.creatorId.toString();
 
     // Send notification to game creator (only if joiner is not the creator)
@@ -372,6 +384,11 @@ export class GameService {
         console.error('Failed to emit join system message:', error);
       }
     }
+
+    // Award participation XP for joining (fire-and-forget, don’t block join response)
+    this.userService.awardJoinXP(userId).catch((err) =>
+      console.error('[GameService] Failed to award join XP:', err)
+    );
 
     return updatedGame;
   }

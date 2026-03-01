@@ -21,7 +21,17 @@ export interface IUser extends Document {
   phone?: string;
   favoriteGame?: string;
   place?: string;
-  profilePicture?: string;
+  avatar?: string;
+  bio?: string;
+
+  // STATS FIELDS
+  totalGames: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  xp: number;
+  level: number;
+  lastActive: Date;
 
   comparePassword(candidatePassword: string): Promise<boolean>;
   isLocked(): boolean;
@@ -99,9 +109,44 @@ const userSchema = new Schema<IUser>(
       trim: true,
       default: "",
     },
-    profilePicture: {
+    avatar: {
       type: String,
       default: "",
+    },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: [500, "Bio must not exceed 500 characters"],
+      default: "",
+    },
+    // STATS FIELDS
+    totalGames: {
+      type: Number,
+      default: 0,
+    },
+    wins: {
+      type: Number,
+      default: 0,
+    },
+    losses: {
+      type: Number,
+      default: 0,
+    },
+    winRate: {
+      type: Number,
+      default: 0,
+    },
+    xp: {
+      type: Number,
+      default: 0,
+    },
+    level: {
+      type: Number,
+      default: 1,
+    },
+    lastActive: {
+      type: Date,
+      default: Date.now,
     },
   },
   {

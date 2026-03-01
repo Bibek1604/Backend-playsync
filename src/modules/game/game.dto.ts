@@ -14,58 +14,67 @@ export const createGameSchema = z.object({
       .min(3, 'Title must be at least 3 characters')
       .max(255, 'Title must not exceed 255 characters')
       .trim(),
-    
+
     description: z
       .string()
       .max(2000, 'Description must not exceed 2000 characters')
       .trim()
       .optional(),
-    
-    tags: z
-      .array(
-        z.string()
-          .min(2, 'Each tag must be at least 2 characters')
-          .max(30, 'Each tag must not exceed 30 characters')
-          .trim()
-      )
+
+    tags: z.preprocess((val) => {
+      if (typeof val === 'string') return [val];
+      return val;
+    }, z.array(
+      z.string()
+        .min(2, 'Each tag must be at least 2 characters')
+        .max(30, 'Each tag must not exceed 30 characters')
+        .trim()
+    )
       .min(1, 'At least one tag is required')
       .max(10, 'Maximum 10 tags allowed')
-      .transform((tags) => {
-        // Normalize: lowercase, trim, and remove duplicates
-        const normalized = tags.map(tag => tag.toLowerCase().trim());
-        return [...new Set(normalized)];
-      })
-      .refine((tags) => tags.length >= 1, {
-        message: 'At least one unique tag is required after normalization'
-      }),
-    
-    maxPlayers: z
+    ).transform((tags: any) => {
+      if (!Array.isArray(tags)) return [];
+      const normalized = tags.map((tag: string) => tag.toLowerCase().trim());
+      return [...new Set(normalized)];
+    }),
+
+    maxPlayers: z.preprocess((val) => (val === '' ? undefined : val), z.coerce
       .number()
       .int('Max players must be an integer')
       .min(1, 'Max players must be at least 1')
-      .max(1000, 'Max players cannot exceed 1000'),
-    
+      .max(1000, 'Max players cannot exceed 1000')),
+
+    startTime: z
+      .string()
+      .optional()
+      .refine((val) => {
+        if (!val) return true;
+        const date = new Date(val);
+        return !isNaN(date.getTime());
+      }, 'Invalid start date format')
+      .transform((val) => val ? new Date(val) : new Date()),
+
     endTime: z
       .string()
       .refine((val) => {
         const date = new Date(val);
         return !isNaN(date.getTime());
-      }, 'Invalid date format')
+      }, 'Invalid end date format')
       .refine((val) => {
         const date = new Date(val);
         const now = new Date();
-        const minEndTime = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
+        const minEndTime = new Date(now.getTime() + 2 * 60 * 1000); // 2 minutes from now
         return date > minEndTime;
-      }, 'End time must be at least 5 minutes from now')
-      .refine((val) => {
-        const date = new Date(val);
-        const now = new Date();
-        const maxEndTime = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 1 year from now
-        return date < maxEndTime;
-      }, 'End time cannot be more than 365 days from now')
-      .transform((val) => new Date(val))
-  })
-}).passthrough(); // Allow other fields like file uploads
+      }, 'End time must be in the future')
+      .transform((val) => new Date(val)),
+
+    category: z.enum(['ONLINE', 'OFFLINE']).optional().default('ONLINE'),
+
+    latitude: z.preprocess((val) => (val === '' ? undefined : val), z.coerce.number().min(-90).max(90).optional()),
+    longitude: z.preprocess((val) => (val === '' ? undefined : val), z.coerce.number().min(-180).max(180).optional()),
+    locationName: z.string().max(255).optional()
+  }).passthrough()
+});
 
 // Update Game DTO
 export const updateGameSchema = z.object({
@@ -76,20 +85,20 @@ export const updateGameSchema = z.object({
       .max(255, 'Title must not exceed 255 characters')
       .trim()
       .optional(),
-    
+
     description: z
       .string()
       .max(2000, 'Description must not exceed 2000 characters')
       .trim()
       .optional(),
-    
-    maxPlayers: z
+
+    maxPlayers: z.coerce
       .number()
       .int('Max players must be an integer')
       .min(1, 'Max players must be at least 1')
       .max(1000, 'Max players cannot exceed 1000')
       .optional(),
-    
+
     endTime: z
       .string()
       .refine((val) => {
@@ -103,8 +112,8 @@ export const updateGameSchema = z.object({
       }, 'End time must be in the future')
       .transform((val) => new Date(val))
       .optional()
-  })
-}).passthrough(); // Allow other fields like file uploads
+  }).passthrough()
+});
 
 // Query Parameters for Get All Games (Enhanced Discovery)
 export const getGamesQuerySchema = z.object({
@@ -147,7 +156,11 @@ export const getGamesQuerySchema = z.object({
       .string()
       .optional()
       .transform((val) => val === 'true'),
-    sortBy: z.enum(['createdAt', 'startTime', 'endTime', 'popularity']).optional(),
+    category: z.enum(['ONLINE', 'OFFLINE']).optional(),
+    latitude: z.string().optional().transform(val => val ? parseFloat(val) : undefined),
+    longitude: z.string().optional().transform(val => val ? parseFloat(val) : undefined),
+    radius: z.string().optional().transform(val => val ? parseFloat(val) : undefined),
+    sortBy: z.enum(['createdAt', 'startTime', 'endTime', 'popularity', 'distance']).optional(),
     sortOrder: z.enum(['asc', 'desc']).optional(),
     page: z
       .string()
@@ -159,15 +172,15 @@ export const getGamesQuerySchema = z.object({
       .optional()
       .transform((val) => (val ? parseInt(val, 10) : 20))
       .refine((val) => val > 0 && val <= 100, 'Limit must be between 1 and 100')
-  })
-}).passthrough();
+  }).passthrough()
+});
 
 // Game ID Parameter Validation
 export const gameIdParamSchema = z.object({
   params: z.object({
     id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid game ID format')
-  })
-}).passthrough();
+  }).passthrough()
+});
 
 // Type exports
 export type CreateGameDTO = z.infer<typeof createGameSchema>['body'];

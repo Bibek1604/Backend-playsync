@@ -67,12 +67,12 @@ export class GameHistoryRepository {
       // Stage 4: Filter by participation status if specified
       ...(status && participationStatuses.includes(status)
         ? [
-            {
-              $match: {
-                'participants.status': status,
-              },
+          {
+            $match: {
+              'participants.status': status,
             },
-          ]
+          },
+        ]
         : []),
 
       // Stage 5: Lookup creator information
@@ -112,7 +112,7 @@ export class GameHistoryRepository {
                     {
                       $subtract: ['$participants.leftAt', '$participants.joinedAt'],
                     },
-                    60000, // Convert milliseconds to minutes
+                    60000,
                   ],
                 },
                 else: null,
@@ -121,10 +121,12 @@ export class GameHistoryRepository {
           },
           gameInfo: {
             creatorName: { $ifNull: ['$creator.fullName', 'Unknown'] },
-            maxPlayers: '$maxParticipants',
-            currentPlayers: '$currentParticipants',
-            endTime: '$date',
-            imageUrl: '$image',
+            maxPlayers: '$maxPlayers',
+            currentPlayers: '$currentPlayers',
+            endTime: '$endTime',
+            imageUrl: '$imageUrl',
+            location: '$location',
+            tags: '$tags',
           },
         },
       },

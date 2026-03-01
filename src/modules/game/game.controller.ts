@@ -8,7 +8,7 @@ import { apiResponse } from '../../Share/utils/apiResponse';
 import { getGameService } from './game.service.factory';
 
 export class GameController {
-  
+
   /**
    * @swagger
    * /api/v1/games:
@@ -75,7 +75,18 @@ export class GameController {
     try {
       const gameService = getGameService();
       const userId = (req as any).user?.id;
-      const gameData = req.body;
+      // Sanitize input: Exclude 'location' from body if it's not a GeoJSON object
+      const { location, ...bodyData } = req.body;
+
+      const gameData = {
+        ...bodyData,
+        category: req.body.category || 'ONLINE',
+        location: (req.body.latitude !== undefined && req.body.longitude !== undefined) ? {
+          type: 'Point' as const,
+          coordinates: [Number(req.body.longitude), Number(req.body.latitude)]
+        } : undefined,
+        locationName: req.body.locationName || location
+      };
       const imageFile = req.file;
 
       const game = await gameService.createGame(userId, gameData, imageFile);
@@ -179,6 +190,10 @@ export class GameController {
         startTimeFrom: req.query.startTimeFrom ? new Date(req.query.startTimeFrom as string) : undefined,
         startTimeTo: req.query.startTimeTo ? new Date(req.query.startTimeTo as string) : undefined,
         includeEnded: req.query.includeEnded === 'true',
+        category: req.query.category as any,
+        latitude: req.query.latitude ? parseFloat(req.query.latitude as string) : undefined,
+        longitude: req.query.longitude ? parseFloat(req.query.longitude as string) : undefined,
+        radius: req.query.radius ? parseFloat(req.query.radius as string) : undefined,
         sortBy: req.query.sortBy as any,
         sortOrder: req.query.sortOrder as any
       };

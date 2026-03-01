@@ -29,6 +29,12 @@ export interface IGameDocument extends Document {
   creatorId: mongoose.Types.ObjectId;
   participants: IGameParticipantDocument[];
   bannedUsers: mongoose.Types.ObjectId[];
+  category: GameCategory;
+  location?: {
+    type: string;
+    coordinates: number[]; // [lon, lat]
+  };
+  locationName?: string;
   startTime: Date;
   endTime: Date;
   endedAt?: Date;
@@ -84,12 +90,12 @@ const gameSchema = new Schema<IGameDocument>(
       type: [String],
       required: [true, 'At least one tag is required'],
       validate: {
-        validator: function(tags: string[]) {
+        validator: function (tags: string[]) {
           return tags && tags.length >= 1 && tags.length <= 10;
         },
         message: 'Game must have between 1 and 10 tags'
       },
-      set: function(tags: string[]) {
+      set: function (tags: string[]) {
         // Normalize tags: lowercase, trim, and remove duplicates
         return [...new Set(tags.map(tag => tag.toLowerCase().trim()))];
       }
@@ -110,10 +116,10 @@ const gameSchema = new Schema<IGameDocument>(
     },
     minPlayers: {
       type: Number,
-      default: 2,
+      default: 1,
       min: [1, 'Min players must be at least 1'],
       validate: {
-        validator: function(value: number) {
+        validator: function (value: number) {
           const doc = this as IGameDocument;
           return value <= doc.maxPlayers;
         },
@@ -152,7 +158,7 @@ const gameSchema = new Schema<IGameDocument>(
       type: Date,
       required: [true, 'End time is required'],
       validate: {
-        validator: function(value: Date) {
+        validator: function (value: Date) {
           const doc = this as IGameDocument;
           return value > doc.startTime;
         },
@@ -170,6 +176,33 @@ const gameSchema = new Schema<IGameDocument>(
     completedAt: {
       type: Date,
       default: null
+    },
+    category: {
+      type: String,
+      enum: Object.values(GameCategory),
+      default: GameCategory.ONLINE
+    },
+    locationName: {
+      type: String,
+      trim: true,
+      maxlength: [255, 'Location name must not exceed 255 characters']
+    },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point']
+      },
+      coordinates: {
+        type: [Number],
+        validate: {
+          validator: function (coords: number[]) {
+            // Only validate if coordinates are provided
+            if (!coords) return true;
+            return coords.length === 2;
+          },
+          message: 'Location must be [longitude, latitude]'
+        }
+      }
     },
     metadata: {
       type: Schema.Types.Mixed,
@@ -191,16 +224,13 @@ gameSchema.index({ endTime: 1, status: 1 });
 gameSchema.index({ 'participants.userId': 1 });
 gameSchema.index({ title: 'text', description: 'text' }); // Text search
 
-// Additional indexes for discovery and join performance
-gameSchema.index({ status: 1, currentPlayers: 1, maxPlayers: 1 });
-gameSchema.index({ startTime: 1, status: 1 });
-gameSchema.index({ tags: 1, status: 1 });
-gameSchema.index({ createdAt: -1 });
-
-// Compound index for active games query
-gameSchema.index({ status: 1, endTime: 1 }, { 
-  partialFilterExpression: { status: { $in: [GameStatus.OPEN, GameStatus.FULL] } } 
+gameSchema.index({ status: 1, endTime: 1 }, {
+  partialFilterExpression: { status: { $in: [GameStatus.OPEN, GameStatus.FULL] } }
 });
+
+// Geo Index for nearby games
+gameSchema.index({ location: '2dsphere' });
+gameSchema.index({ category: 1 });
 
 // Compound index for common discovery queries
 gameSchema.index(
@@ -217,24 +247,24 @@ gameSchema.virtual('creator', {
 });
 
 // Virtual for available slots calculation
-gameSchema.virtual('availableSlots').get(function(this: IGameDocument) {
+gameSchema.virtual('availableSlots').get(function (this: IGameDocument) {
   return Math.max(0, this.maxPlayers - this.currentPlayers);
 });
 
 // Pre-save middleware to validate
-gameSchema.pre('save', async function() {
+gameSchema.pre('save', async function () {
   const doc = this as IGameDocument;
-  
+
   // Validate currentPlayers doesn't exceed maxPlayers
   if (doc.currentPlayers > doc.maxPlayers) {
     throw new Error('Current players cannot exceed max players');
   }
-  
+
   // Validate end time is in the future (only for new games)
   if (this.isNew && doc.endTime <= new Date()) {
     throw new Error('End time must be in the future');
   }
-  
+
   // Auto-update status based on current players
   if (doc.currentPlayers >= doc.maxPlayers && doc.status === GameStatus.OPEN) {
     doc.status = GameStatus.FULL;

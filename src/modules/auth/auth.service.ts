@@ -13,18 +13,37 @@ const OTP_EXPIRY_MINUTES = 10;
 
 export class AuthService {
   static async refreshToken(refreshToken: string): Promise<AuthResponseDTO> {
-    const user = await userRepository.findByEmailOrRefreshToken(refreshToken);
-    if (!user || !user.refreshTokens.includes(refreshToken)) {
+    // First, verify the JWT isn't expired
+    let payload: any;
+    try {
+      payload = (await import("../../Share/config/jwt")).verifyToken(refreshToken);
+    } catch (err: any) {
+      // JWT verification failed (expired or invalid signature)
+      if (err.name === 'TokenExpiredError') {
+        throw new AppError("Refresh token has expired. Please login again.", 401);
+      }
       throw new AppError("Invalid refresh token", 401);
     }
-    const payload = (await import("../../Share/config/jwt")).verifyToken(refreshToken) as any;
+
+    // Find user by the refresh token stored in DB
+    const user = await userRepository.findByRefreshToken(refreshToken);
+    if (!user) {
+      throw new AppError("Refresh token not found or revoked", 401);
+    }
+
+    // Validate the token payload matches the user
     if (!payload || user._id.toString() !== payload.id) {
       throw new AppError("Invalid refresh token payload", 401);
     }
+
+    // Generate new tokens (token rotation for security)
     const accessToken = signAccessToken({ id: user._id.toString(), role: user.role });
     const newRefreshToken = signRefreshToken({ id: user._id.toString(), role: user.role });
+
+    // Replace old refresh token with the new one
     user.refreshTokens = [newRefreshToken];
     await user.save();
+
     return {
       accessToken,
       refreshToken: newRefreshToken,

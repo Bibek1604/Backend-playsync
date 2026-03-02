@@ -14,14 +14,14 @@ export class TournamentRepository {
   }
 
   async findById(id: string): Promise<ITournamentDocument | null> {
-    return Tournament.findById(id).populate('creatorId', 'username avatar').exec();
+    return Tournament.findById(id).populate('creatorId', 'fullName avatar').exec();
   }
 
   async findAll(filters: Record<string, any> = {}, page = 1, limit = 20): Promise<{ data: ITournamentDocument[]; total: number }> {
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
       Tournament.find(filters)
-        .populate('creatorId', 'username avatar')
+        .populate('creatorId', 'fullName avatar')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -116,7 +116,7 @@ export class TournamentRepository {
       tournamentId: { $in: tournamentIds },
       status: PaymentStatus.SUCCESS,
     })
-      .populate('payerId', 'username email avatar')
+      .populate('payerId', 'fullName email avatar')
       .populate('tournamentId', 'name entryFee')
       .sort({ paidAt: -1 })
       .exec();
@@ -126,7 +126,7 @@ export class TournamentRepository {
 
   async getTournamentPayments(tournamentId: string): Promise<IPaymentDocument[]> {
     return TournamentPayment.find({ tournamentId: new mongoose.Types.ObjectId(tournamentId) })
-      .populate('payerId', 'username email avatar')
+      .populate('payerId', 'fullName email avatar')
       .exec();
   }
 }

@@ -5,6 +5,7 @@
 
 import { Server as SocketServer, Socket } from 'socket.io';
 import { TournamentMessage } from './tournament-message.model';
+import { Tournament } from './tournament.model';
 import { TournamentService } from './tournament.service';
 import logger from '../../Share/utils/logger';
 
@@ -30,10 +31,25 @@ export function initializeTournamentChatHandlers(io: SocketServer): void {
         const history = await TournamentMessage.find({ tournamentId })
           .sort({ createdAt: 1 })
           .limit(100)
-          .populate('userId', 'username avatar')
+          .populate('userId', 'fullName avatar')
+
+        // Send participants list (creator + paid members)
+        const tournamentData = await Tournament.findById(tournamentId)
+          .populate('creatorId', 'fullName avatar')
+          .populate('participants.userId', 'fullName avatar')
           .lean();
 
-        socket.emit('tournament:history', history);
+        if (tournamentData) {
+          const creator = tournamentData.creatorId as any;
+          const members = (tournamentData.participants || []).map((p: any) => ({
+            _id: p.userId?._id,
+            fullName: p.userId?.fullName,
+            avatar: p.userId?.avatar,
+            joinedAt: p.joinedAt,
+          }));
+          socket.emit('tournament:participants', { creator, members });
+        }
+
         logger.info(`User ${user.id} joined tournament chat: ${tournamentId}`);
       } catch (err: any) {
         logger.error(`tournament:join error: ${err.message}`);
@@ -59,7 +75,7 @@ export function initializeTournamentChatHandlers(io: SocketServer): void {
         });
 
         const populated = await TournamentMessage.findById(msg._id)
-          .populate('userId', 'username avatar')
+          .populate('userId', 'fullName avatar')
           .lean();
 
         io.to(`tournament:${tournamentId}`).emit('tournament:message', populated);

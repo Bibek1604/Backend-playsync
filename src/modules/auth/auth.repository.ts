@@ -43,8 +43,8 @@ export class UserRepository implements IUserRepository {
     return await User.findByIdAndUpdate(id, updateData, { new: true });
   }
 
-  async findByEmailOrRefreshToken(refreshToken: string): Promise<IUser | null> {
-    return await User.findOne({ refreshToken });
+  async findByRefreshToken(refreshToken: string): Promise<IUser | null> {
+    return await User.findOne({ refreshTokens: refreshToken }).select('+refreshTokens');
   }
 
   async findAll(filter: any = {}): Promise<IUser[]> {

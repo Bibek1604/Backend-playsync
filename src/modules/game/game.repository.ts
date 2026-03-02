@@ -398,7 +398,7 @@ export class GameRepository implements IGameRepository {
 
     const [games, total] = await Promise.all([
       Game.find(query)
-        .select('-participants -metadata')  // Exclude heavy fields for listing
+        .select('-metadata')  // Keep participants for UI state checks
         .populate('creatorId', 'fullName email profilePicture')
         .sort(sort)
         .skip(skip)

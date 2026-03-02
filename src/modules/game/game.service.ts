@@ -81,12 +81,16 @@ export class GameService {
           id: finalGame._id,
           title: finalGame.title,
           category: finalGame.category,
-
           status: finalGame.status,
           maxPlayers: finalGame.maxPlayers,
           currentPlayers: finalGame.currentPlayers
         });
       }
+
+      // Award creation XP (fire-and-forget)
+      this.userService.awardCreateXP(creatorId).catch(err =>
+        console.error('[GameService] Failed to award create XP:', err)
+      );
 
       return finalGame || game;
     } catch (error: any) {
@@ -464,6 +468,22 @@ export class GameService {
       status: GameStatus.ENDED,
       endedAt: new Date()
     } as any);
+
+    // Award 500 XP to the creator
+    this.userService.updateUserStats(game.creatorId.toString(), true, 500).catch(err =>
+      console.error('[GameService] Failed to award game end XP to creator:', err)
+    );
+
+    // Award 500 XP to all active participants
+    const activeParticipants = game.participants.filter(
+      p => p.status === 'ACTIVE' && p.userId.toString() !== game.creatorId.toString()
+    );
+
+    activeParticipants.forEach(p => {
+      this.userService.updateUserStats(p.userId.toString(), false, 500).catch(err =>
+        console.error('[GameService] Failed to award game end XP to participant:', err)
+      );
+    });
   }
 
   /**

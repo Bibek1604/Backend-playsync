@@ -10,3 +10,4 @@ cloudinary.config({
 });
 
 export default cloudinary;
+// Force server restart to load new .env variables

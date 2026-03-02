@@ -1,9 +1,11 @@
 import { User } from '../auth/auth.model';
 import AppError from '../../Share/utils/AppError';
 
-const JOIN_XP = 25;       // XP awarded for joining a game
+const JOIN_XP = 50;       // XP awarded for joining a game
 const WIN_XP = 150;      // XP awarded for winning (completing as creator)
-const PLAY_XP = 100;      // XP awarded for participating to completion
+const PLAY_XP = 500;      // XP awarded for participating to completion
+const CREATE_XP = 100;    // XP awarded for creating a game
+const UP_TIME_XP = 2;     // XP per 2 minutes
 
 export class UserService {
     /**
@@ -29,6 +31,44 @@ export class UserService {
             await User.findByIdAndUpdate(userId, { $set: { level: newLevel } });
         }
     }
+
+    /**
+     * Award XP for creating a game
+     */
+    async awardCreateXP(userId: string): Promise<void> {
+        const user = await User.findByIdAndUpdate(
+            userId,
+            {
+                $inc: { xp: CREATE_XP },
+                $set: { lastActive: new Date() },
+            },
+            { new: true }
+        );
+
+        if (!user) return;
+        const newLevel = Math.floor(Math.sqrt(user.xp / 100)) + 1;
+        if (newLevel > user.level) {
+            await User.findByIdAndUpdate(userId, { $set: { level: newLevel } });
+        }
+    }
+
+    /**
+     * Award playtime XP to a batch of active users
+     */
+    async awardPlayTimeXP(userIds: string[]): Promise<void> {
+        if (!userIds || userIds.length === 0) return;
+
+        // Perform a bulk update to increment XP
+        await User.updateMany(
+            { _id: { $in: userIds } },
+            { $inc: { xp: UP_TIME_XP }, $set: { lastActive: new Date() } }
+        );
+
+        // Optionally, recalculate levels for everyone. 
+        // A simple query to update levels for those who crossed thresholds could be done here,
+        // but it's simpler to let normal interactions or a separate job resolve it, or do an aggregation.
+    }
+
 
     /**
      * Update user stats after a game ends (creator wins / participant plays).

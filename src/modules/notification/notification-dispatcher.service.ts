@@ -1,4 +1,4 @@
-import { NotificationBuilder } from './notification-builder.service';
+import { NotificationBuilder, NotificationPayload } from './notification-builder.service';
 import { DeviceTokenRepository } from './device-token.repository';
 import { pushAdapter } from './push-notification.adapter';
 import mongoose, { Types } from 'mongoose';
@@ -22,7 +22,7 @@ export class NotificationDispatcher {
   async dispatch(options: SendNotificationOptions): Promise<{ sent: number; failed: number }> {
     const { userIds, templateKey, templateVars, title, body, deepLink, data, saveToDb = true } = options;
 
-    let payload = title && body ? { title, body, deepLink, data } : null;
+    let payload: NotificationPayload | null = title && body ? { title, body, deepLink, data } : null;
 
     if (templateKey && !payload) {
       payload = await NotificationBuilder.build(templateKey, templateVars ?? {}, { deepLink, data });

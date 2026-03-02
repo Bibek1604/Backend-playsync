@@ -318,12 +318,17 @@ export class GameRepository implements IGameRepository {
 
     const game = await Game.findOne({
       _id: gameId,
-      'participants': {
-        $elemMatch: {
-          userId: new mongoose.Types.ObjectId(userId),
-          status: 'ACTIVE'
+      $or: [
+        { creatorId: new mongoose.Types.ObjectId(userId) },
+        {
+          'participants': {
+            $elemMatch: {
+              userId: new mongoose.Types.ObjectId(userId),
+              status: 'ACTIVE'
+            }
+          }
         }
-      }
+      ]
     }).select('_id');  // Only fetch ID for performance
 
     return game !== null;

@@ -41,7 +41,7 @@ export class PushNotificationAdapter {
           data: payload.data,
         }),
       });
-      const json = await resp.json();
+      const json = await resp.json() as any;
       return { success: json.success === 1, messageId: json.results?.[0]?.message_id };
     } catch (err: any) {
       return { success: false, error: err.message };

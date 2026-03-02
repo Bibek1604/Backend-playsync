@@ -16,7 +16,7 @@ export class GameCapacityManager {
     const game = await this.gameModel
       .findById(gameId)
       .select('status currentPlayers maxPlayers players')
-      .lean();
+      .lean() as any;
 
     if (!game) return { allowed: false, reason: 'game_not_found' };
     if (game.status !== 'open') return { allowed: false, reason: 'game_closed' };
@@ -56,3 +56,5 @@ export class GameCapacityManager {
     return result.modifiedCount === 1;
   }
 }
+
+export const gameCapacityManager = new GameCapacityManager();

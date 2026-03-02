@@ -37,12 +37,13 @@ export const checkUserIsActiveParticipant = async (
       throw new AppError('Game not found', 404);
     }
     
-    // Check if user is active participant
+// Check if user is the game creator OR an active participant
+    const isCreator = game.creatorId.toString() === userId;
     const isActiveParticipant = game.participants.some(
       (p) => p.userId.toString() === userId && p.status === 'ACTIVE'
     );
-    
-    if (!isActiveParticipant) {
+
+    if (!isCreator && !isActiveParticipant) {
       throw new AppError('You must be an active participant to access this resource', 403);
     }
     

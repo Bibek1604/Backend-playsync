@@ -43,11 +43,12 @@ export const uploadToCloudinary = (
       {
         folder,
         resource_type: 'image',
-        // Use eager transformations (applied post-upload) to avoid signature issues
-        eager: [
+        // Use transformation (applied during upload) instead of eager (applied
+        // post-upload) to avoid the "Invalid Signature" error that arises because
+        // eager params must be part of the HMAC-SHA1 signed string.
+        transformation: [
           { width: 1200, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' }
         ],
-        eager_async: true
       },
       (error, result) => {
         if (error) {

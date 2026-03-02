@@ -509,19 +509,14 @@ export class GameController {
       const gameId = req.params.id;
       const userId = (req as any).user?.id;
 
-      const game = await gameService.joinGame(gameId, userId);
+      // Join the game
+      await gameService.joinGame(gameId, userId);
+      
+      // Fetch full game with populated participants for frontend state sync
+      const fullGame = await gameService.getGameById(gameId, true);
 
       res.status(200).json(
-        apiResponse(true, 'Successfully joined the game', {
-          game: {
-            id: game._id,
-            title: game.title,
-            status: game.status,
-            currentPlayers: game.currentPlayers,
-            maxPlayers: game.maxPlayers,
-            availableSlots: game.maxPlayers - game.currentPlayers
-          }
-        })
+        apiResponse(true, 'Successfully joined the game', { game: fullGame })
       );
     } catch (error) {
       next(error);
@@ -556,18 +551,14 @@ export class GameController {
       const gameId = req.params.id;
       const userId = (req as any).user?.id;
 
-      const game = await gameService.leaveGame(gameId, userId);
+      // Leave the game
+      await gameService.leaveGame(gameId, userId);
+      
+      // Fetch full game with populated participants for frontend state sync
+      const fullGame = await gameService.getGameById(gameId, true);
 
       res.status(200).json(
-        apiResponse(true, 'Successfully left the game', {
-          game: {
-            id: game._id,
-            status: game.status,
-            currentPlayers: game.currentPlayers,
-            maxPlayers: game.maxPlayers,
-            availableSlots: game.maxPlayers - game.currentPlayers
-          }
-        })
+        apiResponse(true, 'Successfully left the game', { game: fullGame })
       );
     } catch (error) {
       next(error);

@@ -22,8 +22,8 @@ export class GameSearchService {
     // Count separately (without skip/limit)
     const countPipeline = pipeline.slice(0, 1); // just $match
     const [items, countResult] = await Promise.all([
-      this.gameModel.aggregate(pipeline),
-      this.gameModel.aggregate([...countPipeline, { $count: 'total' }]),
+      this.gameModel.aggregate(pipeline as any[]),
+      this.gameModel.aggregate([...countPipeline, { $count: 'total' }] as any[]),
     ]);
 
     const total = countResult[0]?.total ?? 0;

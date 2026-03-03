@@ -70,33 +70,41 @@ export class ChatController {
    *                         properties:
    *                           _id:
    *                             type: string
-   *                           user:
-   *                             type: object
-   *                             nullable: true
-   *                             properties:
-   *                               _id:
-   *                                 type: string
-   *                               username:
-   *                                 type: string
-   *                               fullName:
-   *                                 type: string
-   *                               profilePicture:
-   *                                 type: string
-   *                           content:
+   *                             example: 64abc123def456789abcdef0
+   *                           senderId:
    *                             type: string
+   *                             description: User ID of the sender
+   *                             example: 64abc123def456789abcdef1
+   *                           senderName:
+   *                             type: string
+   *                             description: Display name of the sender
+   *                             example: John Doe
+   *                           senderAvatar:
+   *                             type: string
+   *                             nullable: true
+   *                             description: Avatar URL of the sender
+   *                             example: https://example.com/avatar.jpg
+   *                           text:
+   *                             type: string
+   *                             description: Message content
+   *                             example: Ready to play!
    *                           type:
    *                             type: string
    *                             enum: [text, system]
+   *                             example: text
    *                           createdAt:
    *                             type: string
    *                             format: date-time
+   *                             example: 2026-03-03T18:00:00.000Z
    *                     hasMore:
    *                       type: boolean
    *                       description: Whether there are more messages to load
+   *                       example: false
    *                     nextCursor:
    *                       type: string
    *                       format: date-time
    *                       description: Cursor for next page (createdAt of last message)
+   *                       example: 2026-03-03T17:00:00.000Z
    *       403:
    *         description: User is not an active participant
    *       404:
@@ -163,8 +171,56 @@ export class ChatController {
    *     responses:
    *       201:
    *         description: Message sent successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: Message sent
+   *                 data:
+   *                   type: object
+   *                   description: The saved ChatMessageDTO returned by the server
+   *                   properties:
+   *                     _id:
+   *                       type: string
+   *                       example: 64abc123def456789abcdef0
+   *                     senderId:
+   *                       type: string
+   *                       description: User ID of the sender
+   *                       example: 64abc123def456789abcdef1
+   *                     senderName:
+   *                       type: string
+   *                       description: Display name of the sender
+   *                       example: John Doe
+   *                     senderAvatar:
+   *                       type: string
+   *                       nullable: true
+   *                       description: Avatar URL of the sender
+   *                     text:
+   *                       type: string
+   *                       description: Saved message content
+   *                       example: Ready to play!
+   *                     type:
+   *                       type: string
+   *                       enum: [text, system]
+   *                       example: text
+   *                     createdAt:
+   *                       type: string
+   *                       format: date-time
+   *                       example: 2026-03-03T18:00:00.000Z
+   *       400:
+   *         description: Validation error (empty content / content too long)
+   *       401:
+   *         description: Not authenticated
    *       403:
    *         description: User is not an active participant
+   *       404:
+   *         description: Game not found
    */
   async sendMessage(
     req: Request<GameIdParam, {}, SendMessageBody>,

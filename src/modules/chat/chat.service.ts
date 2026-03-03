@@ -128,19 +128,22 @@ export class ChatService {
   
   /**
    * Transform database document to DTO
+   * 
+   * REST API response format (simplified for clarity):
+   * {
+   *   _id: string,
+   *   senderId: string,          ← User ID of sender
+   *   text: string,              ← Message content
+   *   createdAt: ISO 8601 string
+   * }
    */
   private transformToDTO(message: any): ChatMessageDTO {
     return {
       _id: message._id.toString(),
-      user: message.user
-        ? {
-            _id: message.user._id.toString(),
-            username: message.user.username,
-            fullName: message.user.fullName,
-            profilePicture: message.user.profilePicture || undefined
-          }
-        : null,
-      content: message.content,
+      senderId: message.user?._id?.toString() ?? '',
+      senderName: message.user?.fullName ?? 'Unknown',
+      senderAvatar: message.user?.profilePicture || undefined,
+      text: message.content,
       type: message.type,
       createdAt: message.createdAt.toISOString()
     };

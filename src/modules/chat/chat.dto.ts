@@ -66,15 +66,13 @@ export type SendChatMessage = z.infer<typeof sendChatMessageSchema>;
 export type SendMessageBody = z.infer<typeof sendMessageSchema>['body'];
 
 // Response DTO for client
+// Shape matches chat.types.ts ChatMessageDTO
 export interface ChatMessageDTO {
   _id: string;
-  user: {
-    _id: string;
-    username: string;
-    fullName: string;
-    profilePicture?: string;
-  } | null;
-  content: string;
+  senderId: string;         // Flat user ID of sender
+  senderName: string;       // Display name (fullName or username)
+  senderAvatar?: string;    // Avatar URL (optional)
+  text: string;             // Message content (field name is 'text', not 'content')
   type: MessageType;
-  createdAt: string;
+  createdAt: string;        // ISO 8601 timestamp
 }

@@ -13,6 +13,8 @@ import leaderboardRoutes from "./modules/leaderboard/leaderboard.routes";
 import adminRoutes from "./modules/admin/admin.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
 import userRoutes from "./modules/user/user.routes";
+import tournamentRoutes from "./modules/tournament/tournament.routes";
+import paymentRoutes from "./modules/payment/payment.routes";
 import { Router } from 'express';
 import { auth } from "./modules/auth/auth.middleware";
 import { UserController } from "./modules/user/user.controller";
@@ -91,6 +93,8 @@ app.use(`${API_BASE}/leaderboard`, leaderboardRoutes);
 app.use(`${API_BASE}/admin`, adminRoutes);
 app.use(`${API_BASE}/notifications`, notificationRoutes);
 app.use(`${API_BASE}/users`, userRoutes);
+app.use(`${API_BASE}/tournaments`, tournamentRoutes);
+app.use(`${API_BASE}/payments`, paymentRoutes);
 
 // ── /api/v1/profile aliases (frontend uses these endpoints) ──
 const profileRouter = Router();

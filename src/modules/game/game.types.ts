@@ -91,6 +91,7 @@ export interface IGameDiscoveryFilters extends IGameFilters {
   latitude?: number;
   longitude?: number;
   radius?: number; // in kilometers
+  excludeUserId?: string; // User ID to exclude (creator and participant)
 }
 
 export interface IPaginationParams {

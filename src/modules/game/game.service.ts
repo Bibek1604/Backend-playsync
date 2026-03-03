@@ -257,6 +257,7 @@ export class GameService {
    * Delete game (creator only)
    */
   async deleteGame(gameId: string, creatorId: string): Promise<void> {
+    console.info(`[GameService] Delete request received: gameId=${gameId}, userId=${creatorId}`);
     const game = await this.gameRepository.findById(gameId);
 
     if (!game) {
@@ -267,29 +268,61 @@ export class GameService {
       throw new AppError('Forbidden: Only creator can delete this game', 403);
     }
 
+    // 1. Delete associated data (Cascade deletion)
+
     // Delete image from Cloudinary
     if (game.imagePublicId) {
-      await deleteFromCloudinary(game.imagePublicId);
-      // Delete all chat messages for this game
       try {
-        await this.chatService.deleteGameChat(gameId);
+        await deleteFromCloudinary(game.imagePublicId);
       } catch (error) {
-        console.error('Failed to delete game chat messages:', error);
-        // Continue with game deletion even if chat cleanup fails
+        console.error('Failed to delete game image from Cloudinary:', error);
       }
-
     }
 
+    // Delete all chat messages for this game
+    try {
+      await this.chatService.deleteGameChat(gameId);
+    } catch (error) {
+      console.error('Failed to delete game chat messages:', error);
+    }
+
+    // Delete invite links
+    try {
+      const { InviteLink } = await import('./invite-link.model');
+      await InviteLink.deleteMany({ gameId: new mongoose.Types.ObjectId(gameId) });
+    } catch (error) {
+      console.error('Failed to delete game invite links:', error);
+    }
+
+    // Delete game invitations
+    try {
+      const { GameInvitation } = await import('./game-invitation.model');
+      await GameInvitation.deleteMany({ gameId: new mongoose.Types.ObjectId(gameId) });
+    } catch (error) {
+      console.error('Failed to delete game invitations:', error);
+    }
+
+    // Delete notifications related to this game
+    try {
+      const NotificationModel = (await import('../notification/notification.model')).default;
+      await NotificationModel.deleteMany({ 'data.gameId': gameId });
+    } catch (error) {
+      console.error('Failed to delete game notifications:', error);
+    }
+
+    // 2. Delete the game itself
     const deleted = await this.gameRepository.delete(gameId);
 
     if (!deleted) {
       throw new AppError('Failed to delete game', 500);
     }
 
-    // Emit real-time event
+    // 3. Emit real-time event
     if (this.socketEmitter) {
       this.socketEmitter.emitGameDeleted(gameId);
     }
+
+    console.info(`[GameService] Game deleted successfully: gameId=${gameId}, deletedBy=${creatorId}`);
   }
 
   /**

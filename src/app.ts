@@ -19,6 +19,7 @@ import { Router } from 'express';
 import { auth } from "./modules/auth/auth.middleware";
 import { UserController } from "./modules/user/user.controller";
 import { asyncHandler } from "./Share/utils/asyncHandler";
+import { avatarUpload } from "./modules/user/user.uploader";
 
 import logger from "./Share/utils/logger";
 const app = express();
@@ -100,7 +101,7 @@ app.use(`${API_BASE}/payments`, paymentRoutes);
 const profileRouter = Router();
 const userCtrl = new UserController();
 profileRouter.get('/', auth, asyncHandler(userCtrl.getMyProfile.bind(userCtrl)));
-profileRouter.patch('/', auth, asyncHandler(userCtrl.updateMyProfile.bind(userCtrl)));
+profileRouter.patch('/', auth, avatarUpload.single('avatar'), asyncHandler(userCtrl.updateMyProfile.bind(userCtrl)));
 profileRouter.get('/:id', asyncHandler(userCtrl.getProfile.bind(userCtrl)));
 app.use(`${API_BASE}/profile`, profileRouter);
 

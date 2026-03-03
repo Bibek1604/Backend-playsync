@@ -1,5 +1,6 @@
 import { User } from '../auth/auth.model';
 import AppError from '../../Share/utils/AppError';
+import { uploadAvatarToCloudinary } from './user.uploader';
 
 const JOIN_XP = 50;       // XP awarded for joining a game
 const WIN_XP = 150;      // XP awarded for winning (completing as creator)
@@ -120,8 +121,8 @@ export class UserService {
     /**
      * Update user profile
      */
-    async updateProfile(userId: string, updateData: any) {
-        const allowedUpdates = ['fullName', 'avatar', 'bio', 'phone', 'favoriteGame', 'place'];
+    async updateProfile(userId: string, updateData: any, avatarFile?: Express.Multer.File) {
+        const allowedUpdates = ['fullName', 'bio', 'phone', 'favoriteGame', 'place'];
         const filteredData: any = {};
 
         Object.keys(updateData).forEach((key) => {
@@ -129,6 +130,12 @@ export class UserService {
                 filteredData[key] = updateData[key];
             }
         });
+
+        // Handle avatar upload if file is provided
+        if (avatarFile) {
+            const { url } = await uploadAvatarToCloudinary(avatarFile.buffer, userId);
+            filteredData.avatar = url;
+        }
 
         const user = await User.findByIdAndUpdate(userId, filteredData, { new: true, runValidators: true }).select('-password -refreshTokens');
         if (!user) {

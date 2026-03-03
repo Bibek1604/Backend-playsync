@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { UserController } from './user.controller';
 import { auth } from '../auth/auth.middleware';
 import { asyncHandler } from '../../Share/utils/asyncHandler';
+import { avatarUpload } from './user.uploader';
 
 const router = Router();
 const controller = new UserController();
@@ -11,7 +12,7 @@ router.get('/leaderboard', asyncHandler(controller.getLeaderboard.bind(controlle
 
 // My profile
 router.get('/me', auth, asyncHandler(controller.getMyProfile.bind(controller)));
-router.patch('/profile', auth, asyncHandler(controller.updateMyProfile.bind(controller)));
+router.patch('/profile', auth, avatarUpload.single('avatar'), asyncHandler(controller.updateMyProfile.bind(controller)));
 
 // User profile by ID
 router.get('/:id', asyncHandler(controller.getProfile.bind(controller)));

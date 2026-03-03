@@ -16,7 +16,7 @@ export const getChatHistoryQuerySchema = z.object({
       .refine((val) => val >= 1 && val <= 100, {
         message: 'Limit must be between 1 and 100'
       }),
-    
+
     before: z
       .string()
       .optional()
@@ -40,7 +40,7 @@ export const sendChatMessageSchema = z.object({
   gameId: z
     .string()
     .regex(/^[0-9a-fA-F]{24}$/, 'Invalid game ID format'),
-  
+
   content: z
     .string()
     .trim()
@@ -48,10 +48,22 @@ export const sendChatMessageSchema = z.object({
     .max(1500, 'Message cannot exceed 1500 characters')
 });
 
+// REST chat message validation schema
+export const sendMessageSchema = z.object({
+  body: z.object({
+    content: z
+      .string()
+      .trim()
+      .min(1, 'Message cannot be empty')
+      .max(1500, 'Message cannot exceed 1500 characters')
+  })
+});
+
 // Types derived from schemas
 export type GetChatHistoryQuery = z.infer<typeof getChatHistoryQuerySchema>['query'];
 export type GameIdParam = z.infer<typeof gameIdParamSchema>['params'];
 export type SendChatMessage = z.infer<typeof sendChatMessageSchema>;
+export type SendMessageBody = z.infer<typeof sendMessageSchema>['body'];
 
 // Response DTO for client
 export interface ChatMessageDTO {

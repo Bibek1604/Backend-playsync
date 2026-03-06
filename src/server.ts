@@ -5,8 +5,8 @@ import app from "./app";
 import connectDB from "./Share/config/db";
 import logger from "./Share/utils/logger";
 import gameCleanupJob from "./jobs/game.cleanup.job";
+import xpJob from "./jobs/xp.cleanup.job";
 import { initializeSocketServer, getGameEventsEmitter } from "./websocket/socket.server";
-
 
 
 
@@ -35,8 +35,9 @@ const PORT = process.env.PORT || 5000;
     const gameEventsEmitter = getGameEventsEmitter();
     initializeGameService(gameEventsEmitter);
 
-    // Start game cleanup cron job
+    // Start game cleanup and XP cron jobs
     gameCleanupJob.start();
+    xpJob.start();
 
     server.listen(PORT, () => {
       logger.info(`Server running at http://localhost:${PORT}/swagger`);

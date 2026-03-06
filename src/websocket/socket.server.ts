@@ -5,6 +5,7 @@ import { initializeChatHandlers } from '../modules/chat/chat.socket';
 import { initializeTournamentChatHandlers } from '../modules/tournament/tournament.socket';
 import { verifyToken } from '../Share/config/jwt';
 import logger from '../Share/utils/logger';
+import { initializeTournamentHandlers } from '../modules/tournament/tournament.socket';
 
 let io: SocketServer;
 let gameEventsEmitter: GameEventsEmitter;
@@ -26,7 +27,7 @@ const activeUserSockets = new Map<string, UserGameMapping>();
 const socketAuthMiddleware = async (socket: Socket, next: (err?: Error) => void) => {
   try {
     const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
-    
+
     if (!token) {
       logger.warn(`Socket ${socket.id} - Authentication failed: No token provided`);
       return next(new Error('Authentication required - No token provided'));
@@ -34,7 +35,7 @@ const socketAuthMiddleware = async (socket: Socket, next: (err?: Error) => void)
 
     // Verify JWT token
     const decoded = verifyToken(token) as any;
-    
+
     if (!decoded || !decoded.id) {
       logger.warn(`Socket ${socket.id} - Authentication failed: Invalid token`);
       return next(new Error('Authentication failed - Invalid token'));
@@ -59,7 +60,7 @@ const socketAuthMiddleware = async (socket: Socket, next: (err?: Error) => void)
  */
 const handleDisconnect = async (socket: Socket) => {
   const user = (socket as any).user;
-  
+
   if (!user) return;
 
   const userId = user.id;
@@ -67,18 +68,18 @@ const handleDisconnect = async (socket: Socket) => {
 
   if (userMapping) {
     logger.info(`User ${userId} disconnected from socket ${socket.id}`);
-    
+
     // Auto-leave all game rooms (ghost player prevention)
     if (userMapping.gameRooms.size > 0) {
       logger.warn(`User ${userId} disconnected with ${userMapping.gameRooms.size} active game(s)`);
-      
+
       // Note: Actual game leave logic should be handled by frontend
       // or through a heartbeat mechanism. This is just cleanup.
       for (const gameId of userMapping.gameRooms) {
         socket.leave(`game:${gameId}`);
       }
     }
-    
+
     activeUserSockets.delete(userId);
   }
 
@@ -109,13 +110,13 @@ export const initializeSocketServer = (httpServer: HttpServer): SocketServer => 
   // Initialize chat handlers
   initializeChatHandlers(io);
 
-  // Initialize tournament chat handlers
-  initializeTournamentChatHandlers(io);
+  // Initialize tournament handlers
+  initializeTournamentHandlers(io);
 
   // Socket connection handling
   io.on('connection', (socket: Socket) => {
     const user = (socket as any).user;
-    
+
     if (!user) {
       logger.error(`Socket ${socket.id} connected without user - should not happen!`);
       socket.disconnect();
@@ -151,12 +152,12 @@ export const initializeSocketServer = (httpServer: HttpServer): SocketServer => 
       }
 
       socket.join(`game:${gameId}`);
-      
+
       const userMapping = activeUserSockets.get(userId);
       if (userMapping) {
         userMapping.gameRooms.add(gameId);
       }
-      
+
       logger.info(`User ${userId} joined game room: ${gameId}`);
     });
 
@@ -168,12 +169,12 @@ export const initializeSocketServer = (httpServer: HttpServer): SocketServer => 
       }
 
       socket.leave(`game:${gameId}`);
-      
+
       const userMapping = activeUserSockets.get(userId);
       if (userMapping) {
         userMapping.gameRooms.delete(gameId);
       }
-      
+
       logger.info(`User ${userId} left game room: ${gameId}`);
     });
 
@@ -185,13 +186,13 @@ export const initializeSocketServer = (httpServer: HttpServer): SocketServer => 
         }
 
         const { gameId } = data;
-        
+
         // Import dynamically to avoid circular dependency
         const { GameRepository } = await import('../modules/game/game.repository');
         const gameRepo = new GameRepository();
-        
+
         const game = await gameRepo.findById(gameId);
-        
+
         if (!game) {
           return callback?.({ success: false, error: 'Game not found' });
         }
@@ -207,16 +208,16 @@ export const initializeSocketServer = (httpServer: HttpServer): SocketServer => 
 
         // Rejoin game room
         socket.join(`game:${gameId}`);
-        
+
         const userMapping = activeUserSockets.get(userId);
         if (userMapping) {
           userMapping.gameRooms.add(gameId);
         }
 
         logger.info(`User ${userId} reconnected to game: ${gameId}`);
-        
-        callback?.({ 
-          success: true, 
+
+        callback?.({
+          success: true,
           game: {
             id: game._id,
             status: game.status,

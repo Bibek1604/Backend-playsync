@@ -7,18 +7,17 @@ import { MessageType } from './chat.model';
 
 /**
  * Chat message Data Transfer Object
+ * 
+ * REST API format (simplified):
  */
 export interface ChatMessageDTO {
   _id: string;
-  user: {
-    _id: string;
-    username: string;
-    fullName: string;
-    profilePicture?: string;
-  } | null;
-  content: string;
+  senderId: string;              // User ID of sender
+  senderName: string;            // Full name of sender
+  senderAvatar?: string;         // Avatar URL (optional)
+  text: string;                  // Message content (was 'content')
   type: MessageType;
-  createdAt: string;
+  createdAt: string;             // ISO 8601 timestamp
 }
 
 /**

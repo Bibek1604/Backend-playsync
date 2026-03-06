@@ -167,8 +167,9 @@ export class AuthService {
     const user = await userRepository.findByEmail(dto.email);
     
     if (!user) {
-      // Don't reveal if email exists or not (security best practice)
-      throw new AppError("If this email is registered, you will receive a password reset OTP", 200);
+      // Silently return — don't reveal whether email is registered (security best practice)
+      // Response timing is kept constant by the controller
+      return;
     }
 
     // Generate 6-digit OTP
@@ -193,6 +194,25 @@ export class AuthService {
       
       throw new AppError("Failed to send reset email. Please try again later.", 500);
     }
+  }
+
+  /**
+   * Verify OTP validity without resetting the password
+   */
+  static async verifyOtp(dto: { email: string; otp: string }): Promise<{ valid: boolean }> {
+    const userWithOTP = await userRepository.findByEmailWithOTP(dto.email);
+
+    if (!userWithOTP) return { valid: false };
+
+    if (!userWithOTP.resetPasswordOTP || userWithOTP.resetPasswordOTP !== dto.otp) {
+      return { valid: false };
+    }
+
+    if (!userWithOTP.resetPasswordOTPExpires || userWithOTP.resetPasswordOTPExpires < new Date()) {
+      return { valid: false };
+    }
+
+    return { valid: true };
   }
 
   /**

@@ -14,10 +14,12 @@ import adminRoutes from "./modules/admin/admin.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
 import userRoutes from "./modules/user/user.routes";
 import tournamentRoutes from "./modules/tournament/tournament.routes";
+import paymentRoutes from "./modules/payment/payment.routes";
 import { Router } from 'express';
 import { auth } from "./modules/auth/auth.middleware";
 import { UserController } from "./modules/user/user.controller";
 import { asyncHandler } from "./Share/utils/asyncHandler";
+import { avatarUpload } from "./modules/user/user.uploader";
 
 import logger from "./Share/utils/logger";
 const app = express();
@@ -93,12 +95,13 @@ app.use(`${API_BASE}/admin`, adminRoutes);
 app.use(`${API_BASE}/notifications`, notificationRoutes);
 app.use(`${API_BASE}/users`, userRoutes);
 app.use(`${API_BASE}/tournaments`, tournamentRoutes);
+app.use(`${API_BASE}/payments`, paymentRoutes);
 
 // ── /api/v1/profile aliases (frontend uses these endpoints) ──
 const profileRouter = Router();
 const userCtrl = new UserController();
 profileRouter.get('/', auth, asyncHandler(userCtrl.getMyProfile.bind(userCtrl)));
-profileRouter.patch('/', auth, asyncHandler(userCtrl.updateMyProfile.bind(userCtrl)));
+profileRouter.patch('/', auth, avatarUpload.single('avatar'), asyncHandler(userCtrl.updateMyProfile.bind(userCtrl)));
 profileRouter.get('/:id', asyncHandler(userCtrl.getProfile.bind(userCtrl)));
 app.use(`${API_BASE}/profile`, profileRouter);
 

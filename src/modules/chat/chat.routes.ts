@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { ChatController } from './chat.controller';
 import { auth } from '../auth/auth.middleware';
 import { validateDto } from '../../Share/utils/validateDto';
-import { getChatHistoryQuerySchema, gameIdParamSchema } from './chat.dto';
+import { getChatHistoryQuerySchema, gameIdParamSchema, sendMessageSchema } from './chat.dto';
 import { checkUserIsActiveParticipant } from './chat.middleware';
 import { asyncHandler } from '../../Share/utils/asyncHandler';
 
@@ -17,8 +17,6 @@ const controller = new ChatController();
 /**
  * GET /api/v1/games/:gameId/chat
  * Get chat history for a game
- * @auth Required
- * @middleware checkUserIsActiveParticipant - Verify user is active participant
  */
 router.get(
   '/',
@@ -27,6 +25,19 @@ router.get(
   validateDto(getChatHistoryQuerySchema),
   checkUserIsActiveParticipant,
   asyncHandler(controller.getChatHistory.bind(controller))
+);
+
+/**
+ * POST /api/v1/games/:gameId/chat
+ * Send a chat message (REST fallback)
+ */
+router.post(
+  '/',
+  auth,
+  validateDto(gameIdParamSchema),
+  validateDto(sendMessageSchema),
+  checkUserIsActiveParticipant,
+  asyncHandler(controller.sendMessage.bind(controller))
 );
 
 export default router;

@@ -194,6 +194,7 @@ export class GameController {
         latitude: req.query.latitude ? parseFloat(req.query.latitude as string) : undefined,
         longitude: req.query.longitude ? parseFloat(req.query.longitude as string) : undefined,
         radius: req.query.radius ? parseFloat(req.query.radius as string) : undefined,
+        excludeUserId: req.query.excludeMe === 'true' ? (req as any).user?.id : undefined,
         sortBy: req.query.sortBy as any,
         sortOrder: req.query.sortOrder as any
       };

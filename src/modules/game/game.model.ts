@@ -41,6 +41,7 @@ export interface IGameDocument extends Document {
   cancelledAt?: Date;
   completedAt?: Date;
   metadata: Record<string, any>;
+  isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -207,6 +208,10 @@ const gameSchema = new Schema<IGameDocument>(
     metadata: {
       type: Schema.Types.Mixed,
       default: {}
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false
     }
   },
   {

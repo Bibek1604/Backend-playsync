@@ -412,6 +412,23 @@ export class AuthController {
    *             schema:
    *               $ref: '#/components/schemas/ErrorResponse'
    */
+  static async verifyOtp(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await AuthService.verifyOtp(req.body);
+      res.status(200).json({
+        success: true,
+        valid: result.valid,
+        message: result.valid ? "OTP is valid" : "Invalid or expired OTP",
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async resetPassword(
     req: Request<{}, {}, ResetPasswordDTO>,
     res: Response,

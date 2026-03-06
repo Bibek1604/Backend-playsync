@@ -32,7 +32,8 @@ export class UserController {
     async updateMyProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const userId = (req as any).user?.id;
-            const user = await this.userService.updateProfile(userId, req.body);
+            const avatarFile = req.file as Express.Multer.File | undefined;
+            const user = await this.userService.updateProfile(userId, req.body, avatarFile);
             res.status(200).json(apiResponse(true, 'Profile updated', user));
         } catch (error) {
             next(error);

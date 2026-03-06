@@ -16,7 +16,7 @@ export const getChatHistoryQuerySchema = z.object({
       .refine((val) => val >= 1 && val <= 100, {
         message: 'Limit must be between 1 and 100'
       }),
-    
+
     before: z
       .string()
       .optional()
@@ -40,7 +40,7 @@ export const sendChatMessageSchema = z.object({
   gameId: z
     .string()
     .regex(/^[0-9a-fA-F]{24}$/, 'Invalid game ID format'),
-  
+
   content: z
     .string()
     .trim()
@@ -48,21 +48,31 @@ export const sendChatMessageSchema = z.object({
     .max(1500, 'Message cannot exceed 1500 characters')
 });
 
+// REST chat message validation schema
+export const sendMessageSchema = z.object({
+  body: z.object({
+    content: z
+      .string()
+      .trim()
+      .min(1, 'Message cannot be empty')
+      .max(1500, 'Message cannot exceed 1500 characters')
+  })
+});
+
 // Types derived from schemas
 export type GetChatHistoryQuery = z.infer<typeof getChatHistoryQuerySchema>['query'];
 export type GameIdParam = z.infer<typeof gameIdParamSchema>['params'];
 export type SendChatMessage = z.infer<typeof sendChatMessageSchema>;
+export type SendMessageBody = z.infer<typeof sendMessageSchema>['body'];
 
 // Response DTO for client
+// Shape matches chat.types.ts ChatMessageDTO
 export interface ChatMessageDTO {
   _id: string;
-  user: {
-    _id: string;
-    username: string;
-    fullName: string;
-    profilePicture?: string;
-  } | null;
-  content: string;
+  senderId: string;         // Flat user ID of sender
+  senderName: string;       // Display name (fullName or username)
+  senderAvatar?: string;    // Avatar URL (optional)
+  text: string;             // Message content (field name is 'text', not 'content')
   type: MessageType;
-  createdAt: string;
+  createdAt: string;        // ISO 8601 timestamp
 }

@@ -34,21 +34,21 @@ export class GameRepository implements IGameRepository {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return null;
     }
-    return await Game.findById(id);
+    return await Game.findOne({ _id: id, isDeleted: { $ne: true } });
   }
 
   async findByIdWithCreator(id: string): Promise<IGameDocument | null> {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return null;
     }
-    return await Game.findById(id).populate('creatorId', 'fullName email profilePicture');
+    return await Game.findOne({ _id: id, isDeleted: { $ne: true } }).populate('creatorId', 'fullName email profilePicture');
   }
 
   async findByIdWithParticipants(id: string): Promise<IGameDocument | null> {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return null;
     }
-    return await Game.findById(id)
+    return await Game.findOne({ _id: id, isDeleted: { $ne: true } })
       .populate('creatorId', 'fullName email profilePicture')
       .populate('participants.userId', 'fullName email profilePicture');
   }
@@ -57,8 +57,8 @@ export class GameRepository implements IGameRepository {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return null;
     }
-    return await Game.findByIdAndUpdate(
-      id,
+    return await Game.findOneAndUpdate(
+      { _id: id, isDeleted: { $ne: true } },
       { $set: updateData },
       { new: true, runValidators: true }
     );
@@ -68,7 +68,7 @@ export class GameRepository implements IGameRepository {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return false;
     }
-    const result = await Game.findByIdAndDelete(id);
+    const result = await Game.findByIdAndUpdate(id, { $set: { isDeleted: true } });
     return result !== null;
   }
 
@@ -76,7 +76,7 @@ export class GameRepository implements IGameRepository {
     filters: IGameFilters,
     pagination: IPaginationParams
   ): Promise<{ games: IGameDocument[], total: number }> {
-    const query: any = {};
+    const query: any = { isDeleted: { $ne: true } };
 
     // Apply filters
     if (filters.tags && filters.tags.length > 0) {
@@ -112,7 +112,10 @@ export class GameRepository implements IGameRepository {
     filters: Partial<IGameFilters>,
     pagination: IPaginationParams
   ): Promise<{ games: IGameDocument[], total: number }> {
-    const query: any = { creatorId: new mongoose.Types.ObjectId(creatorId) };
+    const query: any = {
+      creatorId: new mongoose.Types.ObjectId(creatorId),
+      isDeleted: { $ne: true }
+    };
 
     if (filters.tags && filters.tags.length > 0) {
       query.tags = { $all: filters.tags };
@@ -125,6 +128,7 @@ export class GameRepository implements IGameRepository {
 
     const [games, total] = await Promise.all([
       Game.find(query)
+        .populate('creatorId', 'fullName email profilePicture')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(pagination.limit)
@@ -142,7 +146,9 @@ export class GameRepository implements IGameRepository {
   ): Promise<{ games: IGameDocument[], total: number }> {
     const query: any = {
       'participants.userId': new mongoose.Types.ObjectId(userId),
-      'participants.status': 'ACTIVE'
+      'participants.status': 'ACTIVE',
+      creatorId: { $ne: new mongoose.Types.ObjectId(userId) },
+      isDeleted: { $ne: true }
     };
 
     if (filters.tags && filters.tags.length > 0) {
@@ -170,35 +176,27 @@ export class GameRepository implements IGameRepository {
   async findExpiredGames(currentTime: Date): Promise<IGameDocument[]> {
     return await Game.find({
       endTime: { $lte: currentTime },
-      status: { $ne: GameStatus.ENDED }
+      status: { $ne: GameStatus.ENDED },
+      isDeleted: { $ne: true }
     });
   }
 
-  /**
-   * Atomic join operation with race condition prevention (FIXED)
-   */
-  /**
-   * Add participant to game atomically
-   * SECURITY: Prevents race conditions with atomic findOneAndUpdate
-   * - Checks all conditions atomically (status, slots, duplicates)
-   * - Updates status to FULL atomically when capacity reached
-   */
   async addParticipant(gameId: string, userId: string): Promise<IGameDocument | null> {
     if (!mongoose.Types.ObjectId.isValid(gameId) || !mongoose.Types.ObjectId.isValid(userId)) {
       return null;
     }
 
-    // ATOMIC OPERATION 1: Add participant and increment counter
     const game = await Game.findOneAndUpdate(
       {
         _id: gameId,
-        status: { $nin: [GameStatus.ENDED, GameStatus.FULL] },  // Not ended or full
-        $expr: { $lt: ['$currentPlayers', '$maxPlayers'] },     // Has available slots
+        isDeleted: { $ne: true },
+        status: { $nin: [GameStatus.ENDED, GameStatus.FULL] },
+        $expr: { $lt: ['$currentPlayers', '$maxPlayers'] },
         'participants': {
           $not: {
             $elemMatch: {
               userId: new mongoose.Types.ObjectId(userId),
-              status: 'ACTIVE'                                   // Not already active
+              status: 'ACTIVE'
             }
           }
         }
@@ -224,14 +222,13 @@ export class GameRepository implements IGameRepository {
       return null;
     }
 
-    // ATOMIC OPERATION 2: Update status to FULL if capacity reached
-    // This prevents race condition where multiple joins could bypass FULL check
     if (game.currentPlayers >= game.maxPlayers) {
       const updatedGame = await Game.findOneAndUpdate(
         {
           _id: gameId,
-          status: { $ne: GameStatus.ENDED },  // Don't update if already ended
-          currentPlayers: { $gte: game.maxPlayers }  // Verify still at capacity
+          isDeleted: { $ne: true },
+          status: { $ne: GameStatus.ENDED },
+          currentPlayers: { $gte: game.maxPlayers }
         },
         {
           $set: { status: GameStatus.FULL }
@@ -242,34 +239,22 @@ export class GameRepository implements IGameRepository {
         }
       );
 
-      return updatedGame || game;  // Return updated or original
+      return updatedGame || game;
     }
 
     return game;
   }
 
-  /**
-   * Remove participant from game atomically
-   * SECURITY: Prevents race conditions with atomic updates
-   * - Updates participant status atomically
-   * - Decrements counter atomically
-   * - Updates game status from FULL to OPEN if needed
-   */
   async removeParticipant(gameId: string, userId: string): Promise<IGameDocument | null> {
     if (!mongoose.Types.ObjectId.isValid(gameId) || !mongoose.Types.ObjectId.isValid(userId)) {
       return null;
     }
 
-    // ATOMIC OPERATION 1: Mark participant as LEFT and decrement counter
     const game = await Game.findOneAndUpdate(
       {
         _id: gameId,
-        'participants': {
-          $elemMatch: {
-            userId: new mongoose.Types.ObjectId(userId),
-            status: 'ACTIVE'
-          }
-        }
+        isDeleted: { $ne: true },
+        'participants': { $elemMatch: { userId: new mongoose.Types.ObjectId(userId), status: 'ACTIVE' } }
       },
       {
         $set: {
@@ -288,24 +273,22 @@ export class GameRepository implements IGameRepository {
       return null;
     }
 
-    // ATOMIC OPERATION 2: Update status from FULL to OPEN if slot freed up
     if (game.status === GameStatus.FULL && game.currentPlayers < game.maxPlayers) {
       const updatedGame = await Game.findOneAndUpdate(
         {
           _id: gameId,
+          isDeleted: { $ne: true },
           status: GameStatus.FULL,
           currentPlayers: { $lt: game.maxPlayers }
         },
-        {
-          $set: { status: GameStatus.OPEN }
-        },
+        { $set: { status: GameStatus.OPEN } },
         {
           new: true,
           populate: { path: 'creatorId', select: 'fullName email profilePicture' }
         }
       );
 
-      return updatedGame || game;  // Return updated or original
+      return updatedGame || game;
     }
 
     return game;
@@ -318,26 +301,24 @@ export class GameRepository implements IGameRepository {
 
     const game = await Game.findOne({
       _id: gameId,
+      isDeleted: { $ne: true },
       'participants': {
         $elemMatch: {
           userId: new mongoose.Types.ObjectId(userId),
           status: 'ACTIVE'
         }
       }
-    }).select('_id');  // Only fetch ID for performance
+    }).select('_id');
 
     return game !== null;
   }
 
-  /**
-   * Check if user can join game
-   */
   async canUserJoinGame(gameId: string, userId: string): Promise<{
     canJoin: boolean;
     reasons: string[];
     game?: IGameDocument;
   }> {
-    const game = await Game.findById(gameId);
+    const game = await Game.findOne({ _id: gameId, isDeleted: { $ne: true } });
 
     if (!game) {
       return { canJoin: false, reasons: ['Game not found'] };
@@ -368,9 +349,6 @@ export class GameRepository implements IGameRepository {
     };
   }
 
-  /**
-   * Advanced discovery query with multiple filters
-   */
   async findAllWithAdvancedFilters(
     filters: any,
     pagination: IPaginationParams
@@ -379,8 +357,6 @@ export class GameRepository implements IGameRepository {
     const hasGeospatial = !!query.location;
     const sort = hasGeospatial ? {} : this.buildSortQuery(filters.sortBy, filters.sortOrder);
 
-    // For countDocuments, we need to convert $nearSphere to $geoWithin because
-    // countDocuments doesn't support $nearSphere (which implies a sort)
     const countQuery = JSON.parse(JSON.stringify(query));
     if (hasGeospatial && countQuery.location?.$nearSphere) {
       const nearSphere = countQuery.location.$nearSphere;
@@ -388,7 +364,7 @@ export class GameRepository implements IGameRepository {
         $geoWithin: {
           $centerSphere: [
             nearSphere.$geometry.coordinates,
-            nearSphere.$maxDistance / 6378100 // Convert meters to radians
+            nearSphere.$maxDistance / 6378100
           ]
         }
       };
@@ -398,7 +374,7 @@ export class GameRepository implements IGameRepository {
 
     const [games, total] = await Promise.all([
       Game.find(query)
-        .select('-metadata')  // Keep participants for UI state checks
+        .select('-participants -metadata')
         .populate('creatorId', 'fullName email profilePicture')
         .sort(sort)
         .skip(skip)
@@ -411,67 +387,49 @@ export class GameRepository implements IGameRepository {
   }
 
   private buildDiscoveryQuery(filters: any): any {
-    const query: any = {};
+    const query: any = { isDeleted: { $ne: true } };
 
-    // Status filter
     if (filters.status) query.status = filters.status;
-
-    // Tags filter  
     if (filters.tags && filters.tags.length > 0) {
       query.tags = { $all: filters.tags };
     }
-
-    // Available slots filter
     if (filters.availableSlots) {
       query.$expr = { $lt: ['$currentPlayers', '$maxPlayers'] };
       if (!filters.status) {
         query.status = GameStatus.OPEN;
       }
     }
-
-    // Capacity range
     if (filters.minPlayers || filters.maxPlayers) {
       query.maxPlayers = {};
       if (filters.minPlayers) query.maxPlayers.$gte = filters.minPlayers;
       if (filters.maxPlayers) query.maxPlayers.$lte = filters.maxPlayers;
     }
-
-    // Time range
     if (filters.startTimeFrom || filters.startTimeTo) {
       query.startTime = {};
       if (filters.startTimeFrom) query.startTime.$gte = filters.startTimeFrom;
       if (filters.startTimeTo) query.startTime.$lte = filters.startTimeTo;
     }
-
-    // Text search
     if (filters.search) {
       query.$text = { $search: filters.search };
     }
-
-    // Creator filter
     if (filters.creatorId) {
       query.creatorId = new mongoose.Types.ObjectId(filters.creatorId);
     }
-
-    // Exclude ended games by default
     if (!filters.includeEnded) {
       if (query.status) {
-        if (query.status !== GameStatus.ENDED) {
-          // Status already set to non-ENDED value
-        } else {
-          // User explicitly requested ENDED games
-        }
+        if (query.status !== GameStatus.ENDED) { }
       } else {
         query.status = { $ne: GameStatus.ENDED };
       }
     }
-
-    // Category filter
     if (filters.category) query.category = filters.category;
-
-    // Geospatial filter (Nearest place) - Skip if coords are 0 or undefined to prevent equator results
+    if (filters.excludeUserId) {
+      const userId = new mongoose.Types.ObjectId(filters.excludeUserId);
+      query.creatorId = { $ne: userId };
+      query['participants.userId'] = { $ne: userId };
+    }
     if (filters.latitude && filters.longitude) {
-      const radiusInMeters = (filters.radius || 10) * 1000; // default 10km
+      const radiusInMeters = (filters.radius || 10) * 1000;
       query.location = {
         $nearSphere: {
           $geometry: {
@@ -482,27 +440,18 @@ export class GameRepository implements IGameRepository {
         }
       };
     }
-
     return query;
   }
 
   private buildSortQuery(sortBy?: string, sortOrder: string = 'desc'): any {
     const order = sortOrder === 'asc' ? 1 : -1;
-
     switch (sortBy) {
-      case 'startTime':
-        return { startTime: order };
-      case 'endTime':
-        return { endTime: order };
-      case 'popularity':
-        return { currentPlayers: order, createdAt: -1 };
-      case 'distance':
-        // Note: distance sorting is typically handled by $nearSphere which sorts by distance automatically
-        // If using $nearSphere, we don't need additional sorting by distance in the sort stage
-        return {};
+      case 'startTime': return { startTime: order };
+      case 'endTime': return { endTime: order };
+      case 'popularity': return { currentPlayers: order, createdAt: -1 };
+      case 'distance': return {};
       case 'createdAt':
-      default:
-        return { createdAt: order };
+      default: return { createdAt: order };
     }
   }
 }

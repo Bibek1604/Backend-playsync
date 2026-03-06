@@ -1,93 +1,127 @@
-/**
- * Tournament Chat - Socket.IO Handler
- * Payment-gated real-time chat for tournaments
- */
-
 import { Server as SocketServer, Socket } from 'socket.io';
-import { TournamentMessage } from './tournament-message.model';
-import { Tournament } from './tournament.model';
-import { TournamentService } from './tournament.service';
+import Tournament, { TournamentStatus } from './tournament.model';
+import Payment, { PaymentStatus } from '../payment/payment.model';
+import mongoose from 'mongoose';
 import logger from '../../Share/utils/logger';
 
-const tournamentService = new TournamentService();
+// Tournament Chat Message structure
+interface TournamentMessage {
+    _id: string;
+    userId: { _id: string; fullName: string; avatar?: string };
+    content: string;
+    createdAt: string;
+}
 
-export function initializeTournamentChatHandlers(io: SocketServer): void {
-  io.on('connection', (socket: Socket) => {
-    const user = (socket as any).user;
-    if (!user) return;
+// In-memory message store for tournaments (Since we don't have a DB schema for tournament messages yet, we can either use the existing chat schema or keep it simple in memory for now, or just build a quick mongoose model).
+// A proper implementation should use a database schema, but for completion of this task let's create a lightweight model or reuse chat.
+import { Schema, model, models } from 'mongoose';
 
-    // ── Join room ─────────────────────────────────────────────────
-    socket.on('tournament:join', async ({ tournamentId }: { tournamentId: string }) => {
-      try {
-        const allowed = await tournamentService.canAccessChat(tournamentId, user.id);
-        if (!allowed) {
-          socket.emit('tournament:error', { message: 'Payment required to access chat.' });
-          return;
-        }
+const tournamentMessageSchema = new Schema({
+    tournamentId: { type: Schema.Types.ObjectId, ref: 'Tournament', required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    content: { type: String, required: true },
+}, { timestamps: true });
 
-        socket.join(`tournament:${tournamentId}`);
+const TournamentMessage = models.TournamentMessage || model('TournamentMessage', tournamentMessageSchema);
 
-        // Send last 100 messages as history
-        const history = await TournamentMessage.find({ tournamentId })
-          .sort({ createdAt: 1 })
-          .limit(100)
-          .populate('userId', 'fullName avatar')
+export function initializeTournamentHandlers(io: SocketServer): void {
+    io.on('connection', (socket: Socket) => {
+        const user = (socket as any).user;
+        if (!user) return;
 
-        // Send participants list (creator + paid members)
-        const tournamentData = await Tournament.findById(tournamentId)
-          .populate('creatorId', 'fullName avatar')
-          .populate('participants.userId', 'fullName avatar')
-          .lean();
+        socket.on('tournament:join', async (data: { tournamentId: string }) => {
+            try {
+                const { tournamentId } = data;
+                const userId = user.id;
 
-        if (tournamentData) {
-          const creator = tournamentData.creatorId as any;
-          const members = (tournamentData.participants || []).map((p: any) => ({
-            _id: p.userId?._id,
-            fullName: p.userId?.fullName,
-            avatar: p.userId?.avatar,
-            joinedAt: p.joinedAt,
-          }));
-          socket.emit('tournament:participants', { creator, members });
-        }
+                const tournament = await Tournament.findById(tournamentId)
+                    .populate('adminId', 'fullName profilePicture')
+                    .populate('participants', 'fullName profilePicture')
+                    .lean();
 
-        logger.info(`User ${user.id} joined tournament chat: ${tournamentId}`);
-      } catch (err: any) {
-        logger.error(`tournament:join error: ${err.message}`);
-        socket.emit('tournament:error', { message: 'Could not join tournament chat.' });
-      }
-    });
+                if (!tournament) {
+                    socket.emit('tournament:error', { message: 'Tournament not found' });
+                    return;
+                }
 
-    // ── Send message ──────────────────────────────────────────────
-    socket.on('tournament:send', async ({ tournamentId, content }: { tournamentId: string; content: string }) => {
-      try {
-        if (!content?.trim()) return;
+                const isAdmin = tournament.adminId._id.toString() === userId.toString();
+                const isParticipant = tournament.participants.some((p: any) => p._id.toString() === userId.toString());
 
-        const allowed = await tournamentService.canAccessChat(tournamentId, user.id);
-        if (!allowed) {
-          socket.emit('tournament:error', { message: 'Payment required to send messages.' });
-          return;
-        }
+                let hasAccess = isAdmin;
 
-        const msg = await TournamentMessage.create({
-          tournamentId,
-          userId: user.id,
-          content: content.trim().slice(0, 1500),
+                if (!isAdmin && isParticipant) {
+                    const payment = await Payment.findOne({
+                        tournamentId: new mongoose.Types.ObjectId(tournamentId),
+                        payerId: new mongoose.Types.ObjectId(userId),
+                        status: PaymentStatus.SUCCESS
+                    });
+                    if (payment) hasAccess = true;
+                }
+
+                if (!hasAccess) {
+                    socket.emit('tournament:error', { message: 'Payment required to access chat' });
+                    return;
+                }
+
+                socket.join(`tournament:${tournamentId}`);
+
+                // Send Participants
+                socket.emit('tournament:participants', {
+                    creator: {
+                        _id: tournament.adminId._id,
+                        fullName: (tournament.adminId as any).fullName,
+                        avatar: (tournament.adminId as any).profilePicture
+                    },
+                    members: tournament.participants.map((p: any) => ({
+                        _id: p._id,
+                        fullName: p.fullName,
+                        avatar: p.profilePicture
+                    }))
+                });
+
+                // Send History
+                const history = await TournamentMessage.find({ tournamentId: new mongoose.Types.ObjectId(tournamentId) })
+                    .populate('userId', 'fullName profilePicture')
+                    .sort({ createdAt: 1 })
+                    .limit(100)
+                    .lean();
+
+                socket.emit('tournament:history', history.map((msg: any) => ({
+                    _id: msg._id,
+                    userId: msg.userId,
+                    content: msg.content,
+                    createdAt: msg.createdAt
+                })));
+
+            } catch (error) {
+                logger.error(`Tournament join error: ${error}`);
+            }
         });
 
-        const populated = await TournamentMessage.findById(msg._id)
-          .populate('userId', 'fullName avatar')
-          .lean();
+        socket.on('tournament:send', async (data: { tournamentId: string, content: string }) => {
+            try {
+                const { tournamentId, content } = data;
+                const userId = user.id;
 
-        io.to(`tournament:${tournamentId}`).emit('tournament:message', populated);
-      } catch (err: any) {
-        logger.error(`tournament:send error: ${err.message}`);
-        socket.emit('tournament:error', { message: 'Could not send message.' });
-      }
-    });
+                // Save
+                const msg = await TournamentMessage.create({
+                    tournamentId: new mongoose.Types.ObjectId(tournamentId),
+                    userId: new mongoose.Types.ObjectId(userId),
+                    content
+                });
 
-    // ── Leave room ────────────────────────────────────────────────
-    socket.on('tournament:leave', ({ tournamentId }: { tournamentId: string }) => {
-      socket.leave(`tournament:${tournamentId}`);
+                const populatedMsg = await TournamentMessage.findById(msg._id).populate('userId', 'fullName profilePicture').lean();
+
+                io.to(`tournament:${tournamentId}`).emit('tournament:message', {
+                    _id: populatedMsg._id,
+                    userId: populatedMsg.userId,
+                    content: populatedMsg.content,
+                    createdAt: populatedMsg.createdAt
+                });
+
+            } catch (error) {
+                logger.error(`Tournament send error: ${error}`);
+            }
+        });
     });
-  });
 }

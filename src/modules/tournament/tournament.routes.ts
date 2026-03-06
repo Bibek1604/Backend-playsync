@@ -1,56 +1,48 @@
-/**
- * Tournament Module - Routes
- */
-
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { TournamentController } from './tournament.controller';
-import { auth } from '../auth/auth.middleware';
-import validateDto from '../../Share/utils/validateDto';
-import { createTournamentSchema, updateTournamentSchema } from './tournament.dto';
-import { requireTournamentChatAccess } from './tournament.middleware';
+import { PaymentController } from '../payment/payment.controller';
+import { auth, authorize } from '../auth/auth.middleware';
+import { asyncHandler } from '../../Share/utils/asyncHandler';
 
 const router = Router();
-const ctrl = new TournamentController();
+const controller = new TournamentController();
+const paymentController = new PaymentController();
 
-// ── Public ────────────────────────────────────────────────────
-/** GET /api/v1/tournaments */
-router.get('/', ctrl.listTournaments);
+// Create tournament - admin only
+router.post('/', auth, authorize('admin'), asyncHandler(controller.createTournament.bind(controller)));
 
-/** GET /api/v1/tournaments/:id */
-router.get('/:id', ctrl.getTournament);
+// Get all tournaments
+router.get('/', auth, asyncHandler(controller.getTournaments.bind(controller)));
 
-// ── Authenticated ─────────────────────────────────────────────
-/** POST /api/v1/tournaments */
-router.post('/', auth, validateDto(createTournamentSchema), ctrl.createTournament);
+// Get specific tournament
+router.get('/:id', auth, asyncHandler(controller.getTournamentById.bind(controller)));
 
-/** GET /api/v1/tournaments/mine/list */
-router.get('/mine/list', auth, ctrl.getMyTournaments);
+// Get Payment status for user
+router.get('/:id/payment/status', auth, asyncHandler(controller.getPaymentStatus.bind(controller)));
 
-/** PATCH /api/v1/tournaments/:id */
-router.patch('/:id', auth, validateDto(updateTournamentSchema), ctrl.updateTournament);
+// Legacy alias for older clients
+router.get('/:id/payment-status', auth, asyncHandler(controller.getPaymentStatus.bind(controller)));
 
-/** DELETE /api/v1/tournaments/:id */
-router.delete('/:id', auth, ctrl.deleteTournament);
+// Legacy payment initiate endpoint used by older mobile builds
+router.post('/:id/pay', auth, asyncHandler(async (req: Request, res: Response) => {
+	req.body = {
+		...(req.body ?? {}),
+		tournamentId: req.params.id,
+	};
+	return paymentController.initiatePayment(req, res);
+}));
 
-// ── Payment ───────────────────────────────────────────────────
-/** POST /api/v1/tournaments/:tournamentId/pay  — initiate payment */
-router.post('/:tournamentId/pay', auth, ctrl.initiatePayment);
+// Legacy verify endpoint used by older mobile builds
+// Current controller supports no-data fallback and verifies latest pending payment.
+router.post('/payment/verify', auth, asyncHandler(async (req: Request, res: Response) => {
+	return paymentController.verifyPayment(req, res);
+}));
 
-/** POST /api/v1/tournaments/payment/verify  — verify after eSewa callback */
-router.post('/payment/verify', auth, ctrl.verifyPayment);
+// Check Chat Access
+router.get('/:id/chat/access', auth, asyncHandler(controller.checkChatAccess.bind(controller)));
 
-/** GET /api/v1/tournaments/:tournamentId/payment-status */
-router.get('/:tournamentId/payment-status', auth, ctrl.getPaymentStatus);
-
-// ── Chat Access ───────────────────────────────────────────────
-/** GET /api/v1/tournaments/:tournamentId/chat-access */
-router.get('/:tournamentId/chat-access', auth, ctrl.checkChatAccess);
-
-// ── Creator Dashboard ─────────────────────────────────────────
-/** GET /api/v1/tournaments/dashboard/transactions */
-router.get('/dashboard/transactions', auth, ctrl.getMyTransactions);
-
-/** GET /api/v1/tournaments/:id/payments */
-router.get('/:id/payments', auth, ctrl.getTournamentPayments);
+// Legacy alias for older clients
+router.get('/:id/chat-access', auth, asyncHandler(controller.checkChatAccess.bind(controller)));
 
 export default router;

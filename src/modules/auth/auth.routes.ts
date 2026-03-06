@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { AuthController } from "./auth.controller";
 import validateDto from "../../Share/utils/validateDto";
-import { RegisterUserDTO, RegisterAdminDTO, LoginDTO, ForgotPasswordDTO, ResetPasswordDTO } from "./auth.dto";
+import { RegisterUserDTO, RegisterAdminDTO, LoginDTO, ForgotPasswordDTO, ResetPasswordDTO, VerifyOtpDTO } from "./auth.dto";
 import { z } from "zod";
 import { auth, authorize } from "./auth.middleware";
 
@@ -85,10 +85,23 @@ router.post(
     AuthController.refreshToken
 );
 
+const verifyOtpSchema = z.object({
+    body: z.object({
+        email: z.string().email("Invalid email address"),
+        otp: z.string().length(6, "OTP must be exactly 6 digits").regex(/^\d+$/, "OTP must contain only numbers"),
+    })
+});
+
 router.post(
     "/forgot-password",
     validateDto(forgotPasswordSchema),
     AuthController.forgotPassword
+);
+
+router.post(
+    "/verify-otp",
+    validateDto(verifyOtpSchema),
+    AuthController.verifyOtp
 );
 
 router.post(

@@ -62,16 +62,16 @@ export class CompleteGameService {
       )
     );
 
-    // Update stats for the creator
-    await this.userService.updateUserStats(game.creatorId.toString(), true, 150); // Creator gets more XP and a "win" for hosting?
+    // Update stats for the creator (500 XP)
+    const creatorStatPromise = this.userService.updateUserStats(game.creatorId.toString(), true, 500);
 
-    // Update stats for all active participants
+    // Update stats for all active participants (500 XP)
     const statsPromises = activeParticipants.map((participant) =>
-      this.userService.updateUserStats(participant.userId.toString(), false, 100) // For now, assume participants didn't "win" but got XP.
+      this.userService.updateUserStats(participant.userId.toString(), false, 500)
     );
 
     // Execute all notifications and stats updates in parallel
-    await Promise.allSettled([...notificationPromises, ...statsPromises]);
+    await Promise.allSettled([...notificationPromises, creatorStatPromise, ...statsPromises]);
 
     // Emit Socket.IO event to game room
     try {

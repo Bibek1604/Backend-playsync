@@ -43,6 +43,7 @@ export class TournamentController {
                 const isParticipant = t.participants.some(p => p.toString() === userId.toString()) || (t.adminId._id.toString() === userId.toString());
                 return {
                     ...t,
+                    creatorId: t.adminId, // Alias for frontend compatibility
                     isPaid,
                     isParticipant,
                     paymentStatus: userPayment?.status || 'NOT_PAID'
@@ -51,7 +52,9 @@ export class TournamentController {
             return res.json({ success: true, data: enhanced });
         }
 
-        res.json({ success: true, data: tournaments });
+        // Transform adminId to creatorId for frontend compatibility
+        const transformed = tournaments.map(t => ({ ...t, creatorId: t.adminId }));
+        res.json({ success: true, data: transformed });
     }
 
     // Get tournament by ID
@@ -78,7 +81,7 @@ export class TournamentController {
 
         res.json({
             success: true,
-            data: { ...tournament, isPaid, paymentStatus }
+            data: { ...tournament, creatorId: tournament.adminId, isPaid, paymentStatus }
         });
     }
 
@@ -87,15 +90,32 @@ export class TournamentController {
         const userId = (req as any).user.id;
         const tournamentId = req.params.id;
 
-        const payment = await Payment.findOne({
-            tournamentId: new mongoose.Types.ObjectId(tournamentId),
-            payerId: new mongoose.Types.ObjectId(userId)
-        }).sort({ createdAt: -1 });
+        if (!userId || !tournamentId) {
+            throw new AppError('Missing userId or tournamentId', 400);
+        }
 
-        res.json({
-            success: true,
-            data: { status: payment ? payment.status.toLowerCase() : null }
-        });
+        try {
+            const payment = await Payment.findOne({
+                tournamentId: new mongoose.Types.ObjectId(tournamentId),
+                payerId: new mongoose.Types.ObjectId(userId)
+            }).sort({ createdAt: -1 });
+
+            const status = payment ? payment.status.toLowerCase() : null;
+            console.log(`[PAYMENT] Status check: user=${userId} tournament=${tournamentId} status=${status}`);
+
+            res.json({
+                success: true,
+                data: {
+                    status,
+                    paymentId: payment?._id?.toString() || null,
+                    amount: payment?.amount || null,
+                    transactionId: payment?.transactionId || null
+                }
+            });
+        } catch (err) {
+            console.error('[PAYMENT] Status check error:', err);
+            throw new AppError('Failed to fetch payment status', 500);
+        }
     }
 
     // Check Chat Access for a tournament
@@ -106,26 +126,31 @@ export class TournamentController {
         const tournament = await Tournament.findById(tournamentId);
         if (!tournament) throw new AppError('Tournament not found', 404);
 
-        // Admin/creator has access
+        // Creator/admin always has access (no payment required)
         if (tournament.adminId.toString() === userId.toString()) {
+            console.log(`[CHAT] Creator access granted for user=${userId} tournament=${tournamentId}`);
             return res.json({ success: true, data: { allowed: true } });
         }
 
-        // Must be participant AND paid
+        // Check if user is participant
         const isParticipant = tournament.participants.some(p => p.toString() === userId.toString());
         if (!isParticipant) {
+            console.log(`[CHAT] Access denied - not a participant: user=${userId} tournament=${tournamentId}`);
             return res.json({ success: true, data: { allowed: false } });
         }
 
+        // Participant must have successful payment
         const payment = await Payment.findOne({
             tournamentId: new mongoose.Types.ObjectId(tournamentId),
             payerId: new mongoose.Types.ObjectId(userId),
             status: PaymentStatus.SUCCESS
         });
 
+        const allowed = !!payment;
+        console.log(`[CHAT] Access check for participant: user=${userId} tournament=${tournamentId} allowed=${allowed}`);
         res.json({
             success: true,
-            data: { allowed: !!payment }
+            data: { allowed }
         });
     }
 }

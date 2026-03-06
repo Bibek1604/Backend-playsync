@@ -12,6 +12,7 @@ const config: Config = {
         '!src/server.ts', // Exclude pure execution files
     ],
     testPathIgnorePatterns: ['/node_modules/', '/dist/'],
+    testMatch: ['**/__tests__/**/*.test.ts'], // Only run files ending in .test.ts
 };
 
 export default config;

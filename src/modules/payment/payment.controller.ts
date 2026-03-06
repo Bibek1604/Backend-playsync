@@ -1,16 +1,16 @@
 import { Request, Response } from 'express';
-import Payment, { PaymentStatus } from './payment.model';
-import Tournament, { TournamentStatus } from '../tournament/tournament.model';
+import { Tournament, TournamentPayment, PaymentStatus, TournamentStatus } from '../tournament/tournament.model';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 import AppError from '../../Share/utils/AppError';
+import { buildEsewaPaymentParams, ESEWA_PAYMENT_URL_EXPORT } from '../tournament/esewa.service';
 
 // ESewa Test Mode Configuration
 const SECRET_KEY = process.env.ESEWA_SECRET_KEY || '8gBm/:&EnhH.1/q';
 const MERCHANT_ID = process.env.ESEWA_MERCHANT_CODE || 'EPAYTEST';
 // ESEWA Gateway Configuration
-const ESEWA_URL = process.env.ESEWA_URL || 'https://uat.esewa.com.np/epay/main';
+const ESEWA_URL = process.env.ESEWA_URL || ESEWA_PAYMENT_URL_EXPORT;
 const getCallbackUrl = (tournamentId: string) => `${process.env.CALLBACK_URL || 'http://localhost:3000/tournaments'}/${tournamentId}`;
 const ensureHttpsIfRemote = (url: string) => {
     if (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1')) {
@@ -38,7 +38,7 @@ export class PaymentController {
         }
 
         // Check if user already paid
-        const existingPayment = await Payment.findOne({
+        const existingPayment = await TournamentPayment.findOne({
             tournamentId: new mongoose.Types.ObjectId(tournamentId),
             payerId: new mongoose.Types.ObjectId(userId),
             status: PaymentStatus.SUCCESS
@@ -47,18 +47,13 @@ export class PaymentController {
 
         const transactionId = `${tournamentId.toString().slice(-8)}_${userId.toString().slice(-8)}_${Date.now()}_${uuidv4().slice(0, 8)}`;
         const amount = tournament.entryFee;
-        const amt = amount.toFixed(2);
-        const psc = '0';
-        const pdc = '0';
-        const txAmt = '0';
-        const tAmt = (Number(amt) + Number(psc) + Number(pdc) + Number(txAmt)).toFixed(2);
+        const amountFixed = Number(amount).toFixed(2);
 
         const successUrl = ensureHttpsIfRemote(`${getCallbackUrl(tournamentId.toString())}?status=success`);
         const failureUrl = ensureHttpsIfRemote(`${getCallbackUrl(tournamentId.toString())}?status=failure`);
 
-        // Generate HMAC-SHA256 signature for eSewa
-        // Message format: "tAmt=X,psc=Y,pdc=Z,txAmt=W,amt=V"
-        const message = `tAmt=${tAmt},psc=${psc},pdc=${pdc},txAmt=${txAmt},amt=${amt}`;
+        // Keep internal signature for traceability/log parity.
+        const message = `total_amount=${amountFixed},transaction_uuid=${transactionId},product_code=${MERCHANT_ID}`;
         const hmac = crypto.createHmac('sha256', SECRET_KEY);
         hmac.update(message);
         const signature = hmac.digest('base64');
@@ -67,7 +62,7 @@ export class PaymentController {
         console.log(`[PAYMENT] Signature: ${signature}`);
 
         // Create Pending Payment record
-        const payment = await Payment.create({
+        const payment = await TournamentPayment.create({
             tournamentId: new mongoose.Types.ObjectId(tournamentId),
             payerId: new mongoose.Types.ObjectId(userId),
             amount,
@@ -78,21 +73,14 @@ export class PaymentController {
 
         console.log(`[PAYMENT] Initiated: ${payment._id} user=${userId} tournament=${tournamentId} txId=${transactionId}`);
 
-        // Prepare classic eSewa form parameters.
-        // All amounts must be strings and tAmt must be the sum of fee + charges.
-        // NOTE: Classic eSewa API does NOT accept signature in form submission
-        // Signature is only for our internal records and potential server-to-server verification
-        const paymentParams = {
-            tAmt,
-            amt,
-            txAmt,
-            psc,
-            pdc,
-            scd: MERCHANT_ID,
-            pid: transactionId,
-            su: successUrl,
-            fu: failureUrl
-        };
+        // Build eSewa v2 signed payload expected by frontend form submitter.
+        const paymentParams = buildEsewaPaymentParams({
+            amount: Number(amountFixed),
+            transactionUuid: transactionId,
+            productName: (tournament as any).name || 'Tournament Entry',
+            successUrl,
+            failureUrl,
+        });
 
         res.json({
             success: true,
@@ -103,6 +91,8 @@ export class PaymentController {
                 productCode: MERCHANT_ID,
                 merchantCode: MERCHANT_ID,
                 paymentUrl: ESEWA_URL,
+                signature: paymentParams.signature,
+                signedFieldNames: paymentParams.signed_field_names,
                 params: paymentParams
             }
         });
@@ -134,13 +124,13 @@ export class PaymentController {
             const transactionId = parsedData.transaction_uuid;
             if (!transactionId) throw new AppError('Missing transaction_uuid', 400);
 
-            payment = await Payment.findOne({ transactionId });
+            payment = await TournamentPayment.findOne({ transactionId });
             if (!payment) throw new AppError('Payment record not found', 404);
         } else {
             // Mode 2: Fallback - auto-verify user's recent PENDING payment
             if (!userId) throw new AppError('User not authenticated', 401);
 
-            payment = await Payment.findOne({
+            payment = await TournamentPayment.findOne({
                 payerId: new mongoose.Types.ObjectId(userId),
                 status: PaymentStatus.PENDING,
                 createdAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
@@ -170,9 +160,15 @@ export class PaymentController {
         console.log(`[PAYMENT] Updated to SUCCESS: ${payment._id}`);
 
         const updatedTournament = await Tournament.findOneAndUpdate(
-            { _id: payment.tournamentId, participants: { $ne: payment.payerId } },
+            { _id: payment.tournamentId, 'participants.userId': { $ne: payment.payerId } },
             {
-                $push: { participants: payment.payerId },
+                $push: {
+                    participants: {
+                        userId: payment.payerId,
+                        paymentId: payment._id,
+                        joinedAt: new Date()
+                    }
+                },
                 $inc: { currentPlayers: 1 }
             },
             { new: true }
@@ -199,12 +195,12 @@ export class PaymentController {
     // 3. Admin Transaction Dashboard
     async getTransactions(req: Request, res: Response) {
         // Admin only route
-        const payments = await Payment.find()
+        const payments = await TournamentPayment.find()
             .populate('payerId', 'fullName profilePicture')
-            .populate('tournamentId', 'title')
+            .populate('tournamentId', 'name title')
             .sort({ createdAt: -1 });
 
-        const totalCollected = await Payment.aggregate([
+        const totalCollected = await TournamentPayment.aggregate([
             { $match: { status: PaymentStatus.SUCCESS } },
             { $group: { _id: null, sum: { $sum: "$amount" } } }
         ]);

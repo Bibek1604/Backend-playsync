@@ -31,7 +31,7 @@ export const requireTournamentChatAccess = async (
     if (!allowed) {
       return next(
         new AppError(
-          'Please complete payment to access this tournament chat.',
+          'Only tournament participants can access this chat.',
           403
         )
       );

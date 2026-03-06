@@ -2,6 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server as SocketServer, Socket } from 'socket.io';
 import { GameEventsEmitter } from './game.events';
 import { initializeChatHandlers } from '../modules/chat/chat.socket';
+import { initializeTournamentChatHandlers } from '../modules/tournament/tournament.socket';
 import { verifyToken } from '../Share/config/jwt';
 import logger from '../Share/utils/logger';
 import { initializeTournamentHandlers } from '../modules/tournament/tournament.socket';

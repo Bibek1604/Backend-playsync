@@ -43,11 +43,11 @@ export const uploadToCloudinary = (
       {
         folder,
         resource_type: 'image',
-        transformation: [
-          { width: 1200, height: 1200, crop: 'limit' }, // Max dimensions
-          { quality: 'auto' }, // Auto quality optimization
-          { fetch_format: 'auto' } // Auto format selection
-        ]
+        // Use eager transformations (applied post-upload) to avoid signature issues
+        eager: [
+          { width: 1200, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' }
+        ],
+        eager_async: true
       },
       (error, result) => {
         if (error) {

@@ -1,8 +1,8 @@
 import { Server as SocketServer, Socket } from 'socket.io';
-import Tournament, { TournamentStatus } from './tournament.model';
-import Payment, { PaymentStatus } from '../payment/payment.model';
+import { Tournament } from './tournament.model';
 import mongoose from 'mongoose';
 import logger from '../../Share/utils/logger';
+import { TournamentService } from './tournament.service';
 
 // Tournament Chat Message structure
 interface TournamentMessage {
@@ -23,6 +23,7 @@ const tournamentMessageSchema = new Schema({
 }, { timestamps: true });
 
 const TournamentMessage = models.TournamentMessage || model('TournamentMessage', tournamentMessageSchema);
+const tournamentService = new TournamentService();
 
 export function initializeTournamentHandlers(io: SocketServer): void {
     io.on('connection', (socket: Socket) => {
@@ -35,8 +36,8 @@ export function initializeTournamentHandlers(io: SocketServer): void {
                 const userId = user.id;
 
                 const tournament = await Tournament.findById(tournamentId)
-                    .populate('adminId', 'fullName profilePicture')
-                    .populate('participants', 'fullName profilePicture')
+                    .populate('creatorId', 'fullName profilePicture avatar')
+                    .populate('participants.userId', 'fullName profilePicture avatar')
                     .lean();
 
                 if (!tournament) {
@@ -44,22 +45,10 @@ export function initializeTournamentHandlers(io: SocketServer): void {
                     return;
                 }
 
-                const isAdmin = tournament.adminId._id.toString() === userId.toString();
-                const isParticipant = tournament.participants.some((p: any) => p._id.toString() === userId.toString());
-
-                let hasAccess = isAdmin;
-
-                if (!isAdmin && isParticipant) {
-                    const payment = await Payment.findOne({
-                        tournamentId: new mongoose.Types.ObjectId(tournamentId),
-                        payerId: new mongoose.Types.ObjectId(userId),
-                        status: PaymentStatus.SUCCESS
-                    });
-                    if (payment) hasAccess = true;
-                }
+                const hasAccess = await tournamentService.canAccessChat(tournamentId, userId);
 
                 if (!hasAccess) {
-                    socket.emit('tournament:error', { message: 'Payment required to access chat' });
+                    socket.emit('tournament:error', { message: 'Only tournament participants can access chat' });
                     return;
                 }
 
@@ -68,14 +57,15 @@ export function initializeTournamentHandlers(io: SocketServer): void {
                 // Send Participants
                 socket.emit('tournament:participants', {
                     creator: {
-                        _id: tournament.adminId._id,
-                        fullName: (tournament.adminId as any).fullName,
-                        avatar: (tournament.adminId as any).profilePicture
+                        _id: (tournament.creatorId as any)?._id,
+                        fullName: (tournament.creatorId as any)?.fullName,
+                        avatar: (tournament.creatorId as any)?.profilePicture || (tournament.creatorId as any)?.avatar
                     },
-                    members: tournament.participants.map((p: any) => ({
-                        _id: p._id,
-                        fullName: p.fullName,
-                        avatar: p.profilePicture
+                    members: (tournament.participants || []).map((p: any) => ({
+                        _id: p?.userId?._id,
+                        fullName: p?.userId?.fullName,
+                        avatar: p?.userId?.profilePicture || p?.userId?.avatar,
+                        joinedAt: p?.joinedAt,
                     }))
                 });
 

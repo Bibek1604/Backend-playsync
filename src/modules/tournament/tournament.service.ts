@@ -227,7 +227,7 @@ export class TournamentService {
 
   /**
    * Check whether user can access tournament chat
-   * Rules: creator OR paid participant
+   * Rules: creator OR participant record OR successful payment
    */
   async canAccessChat(tournamentId: string, userId: string): Promise<boolean> {
     const tournament = await this.repo.findById(tournamentId);
@@ -237,7 +237,11 @@ export class TournamentService {
     const creatorIdStr = this.creatorIdStr(tournament.creatorId);
     if (creatorIdStr === userId) return true;
 
-    // Explicitly look for a SUCCESS payment so old PENDING records don't block access
+    // Participant entries are the primary source of truth for chat eligibility.
+    const participant = await this.repo.isParticipant(tournamentId, userId);
+    if (participant) return true;
+
+    // Fallback for legacy data: allow if a successful payment exists.
     const payment = await this.repo.findSuccessfulPaymentByPayer(tournamentId, userId);
     return !!payment;
   }

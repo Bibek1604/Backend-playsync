@@ -11,6 +11,13 @@ export enum TournamentStatus {
     CLOSED = 'CLOSED'
 }
 
+export enum PaymentStatus {
+    PENDING = 'pending',
+    SUCCESS = 'success',
+    FAILED = 'failed',
+    REFUNDED = 'refunded',
+}
+
 export interface ITournamentDocument extends Document {
     title: string;
     description: string;
@@ -28,59 +35,10 @@ export interface ITournamentDocument extends Document {
     updatedAt: Date;
 }
 
-const tournamentSchema = new Schema<ITournamentDocument>({
-    title: { type: String, required: true },
-    description: { type: String, required: true },
-    type: { type: String, enum: Object.values(TournamentType), required: true },
-    location: { type: String },
-    maxPlayers: { type: Number, required: true },
-    currentPlayers: { type: Number, default: 0 },
-    entryFee: { type: Number, required: true },
-    prizeDetails: { type: String, required: true },
-    startTime: { type: Date, required: true },
-    status: { type: String, enum: Object.values(TournamentStatus), default: TournamentStatus.OPEN },
-    adminId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    participants: [{ type: Schema.Types.ObjectId, ref: 'User' }]
-}, { timestamps: true });
-
-// Auto-update status
-tournamentSchema.pre('save', async function (this: ITournamentDocument) {
-    if (this.currentPlayers >= this.maxPlayers && this.status === TournamentStatus.OPEN) {
-        this.status = TournamentStatus.FULL;
-    }
-});
-
-const Tournament: Model<ITournamentDocument> = mongoose.model<ITournamentDocument>('Tournament', tournamentSchema);
-export default Tournament;
 /**
  * Tournament Module - Mongoose Models
  * Database schemas for tournaments and payments
  */
-
-import mongoose, { Document, Schema } from 'mongoose';
-
-// ─────────────────────────────────────────────
-// Enums
-// ─────────────────────────────────────────────
-export enum TournamentType {
-  ONLINE = 'online',
-  OFFLINE = 'offline',
-}
-
-export enum TournamentStatus {
-  OPEN = 'open',
-  FULL = 'full',
-  ONGOING = 'ongoing',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
-}
-
-export enum PaymentStatus {
-  PENDING = 'pending',
-  SUCCESS = 'success',
-  FAILED = 'failed',
-  REFUNDED = 'refunded',
-}
 
 // ─────────────────────────────────────────────
 // Interfaces
@@ -89,24 +47,6 @@ export interface ITournamentParticipant {
   userId: mongoose.Types.ObjectId;
   joinedAt: Date;
   paymentId: mongoose.Types.ObjectId;
-}
-
-export interface ITournamentDocument extends Document {
-  name: string;
-  description: string;
-  type: TournamentType;
-  location?: string;
-  maxPlayers: number;
-  currentPlayers: number;
-  entryFee: number; // NPR
-  prize: string;
-  startDate: Date;
-  endDate?: Date;
-  status: TournamentStatus;
-  creatorId: mongoose.Types.ObjectId;
-  participants: ITournamentParticipant[];
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface IPaymentDocument extends Document {
